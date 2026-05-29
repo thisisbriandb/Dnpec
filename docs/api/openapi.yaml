@@ -1,0 +1,197 @@
+openapi: 3.1.0
+info:
+  title: DNPEC Collecte API
+  version: 0.1.0
+  description: >
+    Contrat REST cible pour le MVP DNPEC. Les donnees sont securisees par Supabase Auth
+    et Row Level Security. Les endpoints applicatifs seront exposes sous /api/v1.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+    Company:
+      type: object
+      required: [id, nif, name, sector_id, account_status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nif:
+          type: string
+        rccm:
+          type: string
+        name:
+          type: string
+        sector_id:
+          type: string
+          format: uuid
+        size:
+          type: string
+          enum: [tpe, pme, grande_entreprise]
+        legal_status:
+          type: string
+          enum: [sa, sarl, suarl, gie, public, autre]
+        account_status:
+          type: string
+          enum: [pending, validated, rejected, suspended]
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          type: string
+          enum: [draft, scheduled, active, closed, archived]
+        reference_period:
+          type: string
+    Submission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        campaign_id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [draft, submitted, validated, rejected, correction_requested]
+paths:
+  /companies:
+    get:
+      summary: Liste paginee des entreprises
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: sector_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Entreprises visibles selon le role
+    post:
+      summary: Creation Direction d'une entreprise validee
+      responses:
+        "201":
+          description: Entreprise creee
+  /companies/registrations:
+    get:
+      summary: Inscriptions entreprises en attente
+      responses:
+        "200":
+          description: Liste reservee aux analystes et super admins
+  /forms:
+    get:
+      summary: Liste des formulaires types par secteur
+      responses:
+        "200":
+          description: Formulaires visibles
+  /campaigns:
+    get:
+      summary: Liste paginee des campagnes
+      responses:
+        "200":
+          description: Campagnes visibles selon le role
+    post:
+      summary: Creation d'une campagne
+      responses:
+        "201":
+          description: Campagne creee
+  /campaigns/{id}/send:
+    post:
+      summary: Envoi d'une campagne et creation des cibles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "202":
+          description: Envoi planifie ou execute
+  /submissions:
+    get:
+      summary: Liste paginee des soumissions
+      responses:
+        "200":
+          description: Soumissions visibles selon RLS
+    post:
+      summary: Creation ou sauvegarde d'une soumission
+      responses:
+        "201":
+          description: Soumission sauvegardee
+  /submissions/{id}/validate:
+    post:
+      summary: Validation d'une soumission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Soumission validee
+  /submissions/{id}/reject:
+    post:
+      summary: Rejet motive d'une soumission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Soumission rejetee
+  /exports:
+    post:
+      summary: Creation d'une demande d'export asynchrone
+      responses:
+        "202":
+          description: Job d'export cree
+  /audit:
+    get:
+      summary: Journal d'audit
+      responses:
+        "200":
+          description: Reserve au Super Admin
