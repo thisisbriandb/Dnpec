@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plateforme DNPEC — Présentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  deck-stage:not(:defined){visibility:hidden}
+  :root{
+    /* surfaces & texte */
+    --bg:#F4F7FB; --surface:#FFFFFF; --surface-2:#F0F4F9; --surface-3:#E7EDF6;
+    --border:#E2E9F3; --border-strong:#C8D5E8;
+    --t1:#0D1B2E; --t2:#2C3E55; --t3:#6272A4; --t4:#95A5BF;
+    --sidebar:#0D1B2E;
+    --accent:#2563EB; --accent-ink:#1B4FCE; --accent-wash:#EEF4FF;
+    /* statuts */
+    --ok:#16A34A; --ok-wash:#DCFCE7; --ok-ink:#166534;
+    --warn:#F59E0B; --warn-wash:#FEF3C7; --warn-ink:#92400E;
+    --bad:#EF4444; --bad-wash:#FEE2E2; --bad-ink:#991B1B;
+    --violet:#8B5CF6; --violet-wash:#F3E8FF;
+    --shadow-sm:0 1px 2px rgba(13,27,46,.06);
+    --shadow-md:0 10px 30px rgba(13,27,46,.10);
+    /* type scale deck */
+    --type-title:62px; --type-subtitle:38px; --type-body:30px; --type-small:25px; --type-eyebrow:24px;
+    --pad-x:96px; --pad-top:80px; --pad-bottom:72px;
+    --gap-title:40px;
+    --sans:'Inter',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0a1322;font-family:var(--sans)}
+
+  section{
+    background:var(--bg); color:var(--t1);
+    font-size:var(--type-body); line-height:1.5;
+    -webkit-font-smoothing:antialiased; overflow:hidden;
+  }
+  .slide{ position:absolute; inset:0; padding:var(--pad-top) var(--pad-x) var(--pad-bottom); display:flex; flex-direction:column; }
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .eyebrow{font-family:var(--mono);font-size:var(--type-eyebrow);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+  .ttl{font-size:var(--type-title);font-weight:700;line-height:1.04;letter-spacing:-.015em;color:var(--t1);margin:0}
+  .sub{font-size:var(--type-subtitle);font-weight:400;color:var(--t3);margin:0;line-height:1.28;letter-spacing:-.01em}
+  .lead{font-size:var(--type-body);color:var(--t2);max-width:1180px;text-wrap:pretty}
+
+  /* ---------- header for mockup slides ---------- */
+  .mhead{display:flex;justify-content:space-between;align-items:flex-end;gap:48px;margin-bottom:34px}
+  .mhead .ttl{font-size:48px}
+  .mhead .right{display:flex;gap:14px;align-items:center;flex-shrink:0}
+  .pill{font-family:var(--mono);font-size:24px;font-weight:600;padding:9px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--t2);background:var(--surface)}
+  .pill.acc{background:var(--accent-wash);border-color:#cfe0ff;color:var(--accent-ink)}
+
+  .mrow{flex:1;display:flex;gap:34px;min-height:0}
+  .notes{width:430px;flex-shrink:0;display:flex;flex-direction:column;gap:20px;justify-content:center}
+  .note{display:flex;gap:16px;align-items:flex-start}
+  .note .num{font-family:var(--mono);font-weight:700;font-size:21px;color:var(--accent-ink);background:var(--accent-wash);border:1px solid #cfe0ff;width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .note h4{margin:0 0 4px;font-size:26px;font-weight:650;color:var(--t1)}
+  .note p{margin:0;font-size:22px;line-height:1.4;color:var(--t3)}
+
+  /* ---------- app screen mockup ---------- */
+  .scr{flex:1;min-width:0;display:flex;background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md);font-size:22px}
+  .scr.ent{} /* enterprise variant tweaks below */
+  .side{width:236px;flex-shrink:0;background:var(--sidebar);color:#aebbd4;padding:20px 14px;display:flex;flex-direction:column;gap:5px}
+  .side .brand{display:flex;align-items:center;gap:11px;padding:4px 8px 16px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:12px}
+  .side .logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#2563EB,#1B4FCE);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px}
+  .side .brand b{color:#fff;font-size:19px;font-weight:700;line-height:1.1}
+  .side .brand span{display:block;font-size:13px;color:#6f82a6;font-weight:500}
+  .side .grp{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#5f7299;padding:14px 10px 6px;font-weight:600}
+  .nav{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:8px;font-size:18px;font-weight:500;color:#aebbd4;position:relative}
+  .nav .ic{width:18px;height:18px;border-radius:5px;border:2px solid currentColor;opacity:.8;flex-shrink:0}
+  .nav .ct{margin-left:auto;font-family:var(--mono);font-size:14px;background:#22324d;color:#cdd8ec;border-radius:999px;padding:2px 9px;font-weight:600}
+  .nav.on{background:rgba(37,99,235,.16);color:#fff}
+  .nav.on::before{content:"";position:absolute;left:-14px;top:7px;bottom:7px;width:3px;border-radius:3px;background:var(--accent)}
+  .nav.lock{opacity:.45}
+  .nav.lock .ct{background:none;color:#5f7299}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
+  .top{height:62px;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;padding:0 22px}
+  .top .crumb{font-size:18px;color:var(--t3)}
+  .top .crumb b{color:var(--t1);font-weight:600}
+  .search{margin-left:auto;display:flex;align-items:center;gap:9px;width:300px;height:38px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface-2);padding:0 13px;color:var(--t4);font-size:16px}
+  .search .mag{width:14px;height:14px;border:2px solid var(--t4);border-radius:50%;flex-shrink:0}
+  .kbd{font-family:var(--mono);font-size:13px;border:1px solid var(--border-strong);border-radius:5px;padding:2px 7px;color:var(--t3);background:var(--surface);margin-left:auto}
+  .ava{width:34px;height:34px;border-radius:50%;background:var(--surface-3);border:1px solid var(--border-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--t2)}
+  .content{flex:1;min-height:0;padding:22px;overflow:hidden}
+
+  /* KPI cards */
+  .kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:15px 16px;box-shadow:var(--shadow-sm)}
+  .kpi .lbl{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:600}
+  .kpi .val{font-family:var(--mono);font-size:30px;font-weight:700;color:var(--t1);margin-top:6px;letter-spacing:-.02em}
+  .kpi .dl{font-family:var(--mono);font-size:15px;font-weight:600;margin-top:6px;display:inline-flex;align-items:center;gap:5px}
+  .up{color:var(--ok)} .down{color:var(--bad)}
+  .spark{height:26px;margin-top:8px;display:flex;align-items:flex-end;gap:3px}
+  .spark i{flex:1;background:var(--accent-wash);border-radius:2px 2px 0 0;display:block}
+
+  /* panels / charts */
+  .panes{display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
+  .pane{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:16px 17px;box-shadow:var(--shadow-sm)}
+  .pane h5{margin:0 0 3px;font-size:18px;font-weight:650;color:var(--t1)}
+  .pane .cap{font-size:14px;color:var(--t3);margin:0 0 14px}
+  .bars{height:150px;display:flex;align-items:flex-end;gap:12px;padding-top:8px}
+  .bars .b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:7px;height:100%}
+  .bars .b i{width:100%;max-width:34px;background:var(--accent);border-radius:4px 4px 0 0;display:block}
+  .bars .b i.l{background:var(--accent-wash);border:1px solid #cfe0ff}
+  .bars .b span{font-family:var(--mono);font-size:13px;color:var(--t3)}
+  .hbar{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:15px}
+  .hbar .nm{width:120px;color:var(--t2);font-weight:500;flex-shrink:0}
+  .hbar .track{flex:1;height:14px;background:var(--surface-2);border-radius:7px;overflow:hidden}
+  .hbar .track i{display:block;height:100%;background:var(--accent);border-radius:7px}
+  .hbar .pc{font-family:var(--mono);font-size:14px;color:var(--t2);width:48px;text-align:right;flex-shrink:0}
+
+  /* data table */
+  table.tbl{width:100%;border-collapse:collapse;font-size:17px}
+  .tbl thead th{text-align:left;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);font-weight:600;padding:11px 14px;border-bottom:1px solid var(--border);background:var(--surface-2);position:sticky;top:0}
+  .tbl td{padding:13px 14px;border-bottom:1px solid var(--border);color:var(--t2)}
+  .tbl tbody tr:hover{background:var(--accent-wash)}
+  .tbl .nif{font-family:var(--mono);font-size:15px;color:var(--t3)}
+  .tbl .co{font-weight:600;color:var(--t1)}
+  .tbl .num{font-family:var(--mono);text-align:right;color:var(--t1);font-variant-numeric:tabular-nums}
+  .tbl .ck{width:18px;height:18px;border:2px solid var(--border-strong);border-radius:5px;display:inline-block;vertical-align:middle}
+  .tbl tr.sel{background:var(--accent-wash)}
+  .tbl tr.sel .ck{background:var(--accent);border-color:var(--accent)}
+
+  .badge{display:inline-flex;align-items:center;gap:7px;font-size:15px;font-weight:600;padding:4px 12px;border-radius:999px;line-height:1.3}
+  .badge .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .b-ok{background:var(--ok-wash);color:var(--ok-ink)}
+  .b-warn{background:var(--warn-wash);color:var(--warn-ink)}
+  .b-bad{background:var(--bad-wash);color:var(--bad-ink)}
+  .b-info{background:var(--accent-wash);color:var(--accent-ink)}
+  .b-neu{background:var(--surface-3);color:var(--t3)}
+  .b-vio{background:var(--violet-wash);color:#6D28D9}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;font-size:16px;font-weight:600;padding:9px 16px;border-radius:8px;border:1px solid transparent}
+  .btn-p{background:var(--accent);color:#fff}
+  .btn-s{background:var(--surface);border-color:var(--border-strong);color:var(--t2)}
+  .btn-ok{background:var(--ok);color:#fff}
+  .btn-bad{background:var(--surface);border-color:#f3c2c2;color:var(--bad-ink)}
+  .btn-g{background:transparent;color:var(--t3)}
+
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:500;padding:7px 12px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--t2)}
+  .chip.x::after{content:"×";color:var(--t4);font-weight:600;margin-left:2px}
+  .selbar{display:flex;align-items:center;gap:12px;background:var(--accent-ink);color:#fff;border-radius:9px;padding:9px 14px;font-size:16px;font-weight:600;margin-bottom:14px}
+  .selbar .sp{margin-left:auto;display:flex;gap:8px}
+  .selbar .gb{background:rgba(255,255,255,.16);border-radius:7px;padding:6px 12px;font-weight:600;font-size:15px}
+
+  /* generic section header slide */
+  .sec{position:absolute;inset:0;background:var(--sidebar);color:#fff;padding:var(--pad-top) var(--pad-x);display:flex;flex-direction:column;justify-content:center}
+  .sec::after{content:"";position:absolute;right:-160px;top:-160px;width:620px;height:620px;border-radius:50%;background:radial-gradient(circle at center,rgba(37,99,235,.30),transparent 62%)}
+  .sec .signo{font-family:var(--mono);font-size:150px;font-weight:700;color:rgba(255,255,255,.10);line-height:.8;letter-spacing:-.04em}
+  .sec .seti{font-size:74px;font-weight:700;letter-spacing:-.02em;margin:18px 0 0;max-width:1200px}
+  .sec .sesub{font-size:30px;color:#9fb0cf;margin-top:22px;max-width:900px;line-height:1.4}
+  .sec .rule{width:96px;height:5px;background:var(--accent);border-radius:3px;margin-top:34px}
+  .sec .tags{display:flex;gap:12px;margin-top:34px;flex-wrap:wrap}
+  .sec .tg{font-family:var(--mono);font-size:24px;color:#cdd8ec;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:8px 18px}
+
+  /* ---------- COVER ---------- */
+  .cover{position:absolute;inset:0;background:var(--sidebar);color:#fff;padding:var(--pad-top) var(--pad-x);display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
+  .cover::before{content:"";position:absolute;inset:0;background:
+     radial-gradient(900px 600px at 82% 12%,rgba(37,99,235,.34),transparent 60%),
+     radial-gradient(700px 520px at 8% 96%,rgba(37,99,235,.14),transparent 60%)}
+  .cover>*{position:relative;z-index:1}
+  .cv-top{display:flex;align-items:center;gap:16px}
+  .cv-logo{width:62px;height:62px;border-radius:14px;background:linear-gradient(135deg,#2563EB,#1B4FCE);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:30px;color:#fff;box-shadow:0 8px 24px rgba(37,99,235,.4)}
+  .cv-org b{display:block;font-size:25px;font-weight:700;letter-spacing:-.01em}
+  .cv-org span{display:block;font-size:24px;color:#9fb0cf;font-family:var(--mono);letter-spacing:.02em}
+  .cv-mid{}
+  .cv-kick{font-family:var(--mono);font-size:24px;letter-spacing:.16em;text-transform:uppercase;color:#7fa9ff;font-weight:600;margin-bottom:26px}
+  .cv-h1{font-size:96px;font-weight:800;line-height:1.02;letter-spacing:-.03em;margin:0;max-width:1480px}
+  .cv-h1 em{font-style:normal;color:#7fa9ff}
+  .cv-lead{font-size:31px;color:#aebbd4;margin-top:30px;max-width:1080px;line-height:1.42}
+  .cv-bot{display:flex;align-items:flex-end;justify-content:space-between;gap:30px}
+  .cv-meta{display:flex;gap:14px;flex-wrap:wrap}
+  .cv-tag{font-family:var(--mono);font-size:24px;color:#cdd8ec;border:1px solid rgba(255,255,255,.20);border-radius:999px;padding:9px 20px}
+  .cv-foot{font-size:24px;color:#7d8eb0;text-align:right;line-height:1.5}
+
+  /* COVER variation B — clair institutionnel */
+  html[data-cover="b"] .cover{background:var(--surface);color:var(--t1)}
+  html[data-cover="b"] .cover::before{background:
+     radial-gradient(900px 620px at 88% -6%,rgba(37,99,235,.12),transparent 60%),
+     linear-gradient(180deg,#FFFFFF,#F4F7FB)}
+  html[data-cover="b"] .cover::after{content:"";position:absolute;left:0;top:0;bottom:0;width:14px;background:linear-gradient(180deg,#2563EB,#1B4FCE);z-index:1}
+  html[data-cover="b"] .cv-org b{color:var(--t1)}
+  html[data-cover="b"] .cv-org span{color:var(--t3)}
+  html[data-cover="b"] .cv-kick{color:var(--accent-ink)}
+  html[data-cover="b"] .cv-h1{color:var(--t1)}
+  html[data-cover="b"] .cv-h1 em{color:var(--accent)}
+  html[data-cover="b"] .cv-lead{color:var(--t2)}
+  html[data-cover="b"] .cv-tag{color:var(--t2);border-color:var(--border-strong)}
+  html[data-cover="b"] .cv-foot{color:var(--t3)}
+
+  /* overview diagram */
+  .ov{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:30px;min-height:0;margin-top:10px}
+  .portal{border:1px solid var(--border-strong);border-radius:16px;background:var(--surface);box-shadow:var(--shadow-md);display:flex;flex-direction:column;overflow:hidden}
+  .portal .ph{padding:26px 30px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border)}
+  .portal.dir .ph{background:var(--sidebar);color:#fff}
+  .portal.ent .ph{background:var(--accent-wash)}
+  .portal .ph .pl{width:50px;height:50px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;flex-shrink:0}
+  .portal.dir .ph .pl{background:rgba(255,255,255,.12);color:#fff}
+  .portal.ent .ph .pl{background:var(--accent);color:#fff}
+  .portal .ph h3{margin:0;font-size:30px;font-weight:700}
+  .portal .ph p{margin:2px 0 0;font-size:24px;opacity:.7}
+  .portal .pb{padding:24px 30px;flex:1;display:flex;flex-direction:column;gap:16px}
+  .feat{display:flex;gap:14px;align-items:flex-start}
+  .feat .fi{width:30px;height:30px;border-radius:8px;background:var(--accent-wash);border:1px solid #cfe0ff;flex-shrink:0;margin-top:2px}
+  .feat h4{margin:0 0 4px;font-size:25px;font-weight:600;color:var(--t1)}
+  .feat p{margin:0;font-size:24px;color:var(--t3);line-height:1.3}
+  .roles{display:flex;gap:10px;padding:18px 30px;border-top:1px solid var(--border);flex-wrap:wrap}
+  .role{font-family:var(--mono);font-size:24px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:7px 16px;color:var(--t2)}
+
+  /* design system grids */
+  .dsrow{flex:1;display:flex;gap:30px;min-height:0}
+  .swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-top:6px}
+  .sw{border:1px solid var(--border);border-radius:11px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm)}
+  .sw .cap{height:96px}
+  .sw .meta{padding:11px 13px}
+  .sw .meta b{display:block;font-size:18px;font-weight:600;color:var(--t1)}
+  .sw .meta span{font-family:var(--mono);font-size:15px;color:var(--t3)}
+
+  .typ{display:flex;flex-direction:column;gap:22px;flex:1}
+  .typ .tr{display:flex;align-items:baseline;gap:28px;border-bottom:1px solid var(--border);padding-bottom:18px}
+  .typ .tk{font-family:var(--mono);font-size:16px;color:var(--t3);width:230px;flex-shrink:0}
+  .compgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;flex:1;min-height:0}
+  .cc{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:22px 24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:16px}
+  .cc h5{margin:0;font-size:17px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:600}
+  .cc .demo{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+
+  .princ{display:grid;grid-template-columns:repeat(2,1fr);gap:22px 40px;flex:1;align-content:center}
+  .pr{display:flex;gap:20px;align-items:flex-start}
+  .pr .pk{font-family:var(--mono);font-size:19px;font-weight:700;color:#fff;background:var(--accent);border-radius:10px;width:54px;height:54px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .pr h4{margin:0 0 6px;font-size:28px;font-weight:650;color:var(--t1)}
+  .pr p{margin:0;font-size:22px;color:var(--t3);line-height:1.4}
+
+  /* form mock (enterprise) */
+  .fwrap{display:flex;gap:0;flex:1}
+  .fnav{width:240px;flex-shrink:0;border-right:1px solid var(--border);padding:18px 16px;background:var(--surface)}
+  .fnav .fi{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:8px;font-size:17px;color:var(--t2);font-weight:500;margin-bottom:3px}
+  .fnav .fi .dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--border-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .fnav .fi.done .dot{background:var(--ok);border-color:var(--ok)}
+  .fnav .fi.on{background:var(--accent-wash);color:var(--accent-ink);font-weight:600}
+  .fnav .fi.on .dot{border-color:var(--accent)}
+  .fbody{flex:1;min-width:0;padding:22px 26px;display:flex;flex-direction:column;gap:16px;background:var(--bg)}
+  .field{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  .field label{display:block;font-size:17px;font-weight:600;color:var(--t1);margin-bottom:9px}
+  .field label .req{color:var(--bad)}
+  .field .inp{height:42px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);display:flex;align-items:center;padding:0 13px;font-family:var(--mono);font-size:18px;color:var(--t1);justify-content:space-between}
+  .field .inp .u{font-family:var(--sans);font-size:15px;color:var(--t4)}
+  .field .hint{font-size:14px;color:var(--t3);margin-top:8px}
+  .field.warn .inp{border-color:var(--warn);background:var(--warn-wash)}
+  .field.warn .hint{color:var(--warn-ink)}
+  .field.ok .inp{border-color:var(--ok)}
+  .progress{height:8px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+  .progress i{display:block;height:100%;background:var(--accent);border-radius:5px}
+
+  /* stepper */
+  .stepper{display:flex;align-items:center;gap:0;margin-bottom:18px}
+  .stp{display:flex;align-items:center;gap:11px;font-size:17px;color:var(--t3);font-weight:500}
+  .stp .n{width:34px;height:34px;border-radius:50%;border:2px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:16px;font-weight:600;flex-shrink:0}
+  .stp.done{color:var(--t2)} .stp.done .n{background:var(--ok);border-color:var(--ok);color:#fff}
+  .stp.on{color:var(--accent-ink)} .stp.on .n{background:var(--accent);border-color:var(--accent);color:#fff}
+  .stp .ln{width:54px;height:2px;background:var(--border-strong);margin:0 16px}
+
+  /* validation split */
+  .vsplit{display:grid;grid-template-columns:1fr 360px;gap:0;flex:1;min-height:0}
+  .vans{padding:20px 24px;overflow:hidden;border-right:1px solid var(--border)}
+  .vrow{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--border);font-size:18px}
+  .vrow .q{color:var(--t2)}
+  .vrow .a{font-family:var(--mono);font-weight:600;color:var(--t1);display:flex;align-items:center;gap:14px}
+  .vrow .prev{font-size:14px;color:var(--t4);font-weight:500}
+  .vrow.flag{background:var(--warn-wash);margin:0 -24px;padding:13px 24px;border-bottom:1px solid #f0dca0}
+  .vrow.flag .a{color:var(--warn-ink)}
+  .vflagmsg{font-size:14px;color:var(--warn-ink);background:var(--warn-wash);border-left:3px solid var(--warn);padding:9px 14px;margin:0 -24px 0;border-radius:0 6px 6px 0}
+  .vact{padding:20px 22px;background:var(--surface);display:flex;flex-direction:column;gap:13px}
+  .vact h5{margin:0;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);font-weight:600}
+  .vbtn{display:flex;align-items:center;justify-content:space-between;width:100%;font-size:18px;font-weight:600;padding:13px 16px;border-radius:9px;border:1px solid transparent}
+  .vbtn .k{font-family:var(--mono);font-size:14px;opacity:.7;border:1px solid currentColor;border-radius:5px;padding:1px 7px}
+  .v-ok{background:var(--ok);color:#fff}
+  .v-warn{background:var(--surface);border-color:var(--warn);color:var(--warn-ink)}
+  .v-bad{background:var(--surface);border-color:#f3c2c2;color:var(--bad-ink)}
+
+  .close{position:absolute;bottom:30px;right:var(--pad-x);font-family:var(--mono);font-size:18px;color:var(--t4)}
+  .pageno{position:absolute;bottom:30px;left:var(--pad-x);font-family:var(--mono);font-size:18px;color:var(--t4)}
+</style>
+</head>
+<body style="background-color: rgb(5, 15, 31)">
+
+<deck-stage width="1920" height="1080">
+
+  <!-- 01 — COVER -->
+  <section data-label="Couverture">
+    <div class="cover" data-screen-label="01 Couverture">
+      <div class="cv-top">
+        <div class="cv-logo">D</div>
+        <div class="cv-org">
+          <b>DNPEC</b>
+          <span>Ministère du Plan · République de Guinée</span>
+        </div>
+      </div>
+      <div class="cv-mid">
+        <div class="cv-kick">Plateforme intégrée · Conjoncture économique</div>
+        <h1 class="cv-h1">Collecte &amp; analyse<br><em>conjoncturelle</em>, réunies.</h1>
+        <p class="cv-lead">Un système unifié pour collecter les données des entreprises, valider les soumissions et produire les indices conjoncturels — d'un seul portail Direction à un portail Entreprise accessible.</p>
+      </div>
+      <div class="cv-bot">
+        <div class="cv-meta">
+          <span class="cv-tag">Portail Direction</span>
+          <span class="cv-tag">Portail Entreprise</span>
+          <span class="cv-tag">Indices ICA · ICE</span>
+        </div>
+        <div class="cv-foot">Revue de design haute-fidélité<br>Mai 2026 · v1.0</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 — VUE D'ENSEMBLE -->
+  <section data-label="Deux portails">
+    <div class="slide" data-screen-label="02 Vue d'ensemble">
+      <div style="margin-bottom:26px">
+        <div class="eyebrow">Vue d'ensemble</div>
+        <h2 class="ttl" style="margin-top:14px">Une plateforme, deux portails</h2>
+      </div>
+      <div class="ov">
+        <div class="portal dir">
+          <div class="ph">
+            <div class="pl">D</div>
+            <div><h3>Portail Direction</h3><p>Interne · DNPEC</p></div>
+          </div>
+          <div class="pb">
+            <div class="feat"><div class="fi"></div><div><h4>Piloter la collecte</h4><p>Campagnes, ciblage par secteur, suivi de participation en temps réel.</p></div></div>
+            <div class="feat"><div class="fi"></div><div><h4>Valider les soumissions</h4><p>File priorisée, détection d'anomalies, comparaison historique.</p></div></div>
+            <div class="feat"><div class="fi"></div><div><h4>Produire les indices</h4><p>Tableaux analytiques ICA / ICE, agrégats sectoriels, exports.</p></div></div>
+          </div>
+          <div class="roles">
+            <span class="role">Super Admin</span><span class="role">Analyste</span><span class="role">Agent de saisie</span>
+          </div>
+        </div>
+        <div class="portal ent">
+          <div class="ph">
+            <div class="pl">E</div>
+            <div><h3>Portail Entreprise</h3><p>Externe · TPE · PME · Grandes entreprises</p></div>
+          </div>
+          <div class="pb">
+            <div class="feat"><div class="fi"></div><div><h4>Répondre aux campagnes</h4><p>Formulaires par sections, contrôles de cohérence, sauvegarde auto.</p></div></div>
+            <div class="feat"><div class="fi"></div><div><h4>Suivre ses soumissions</h4><p>Historique, versions, motifs de rejet et resoumission.</p></div></div>
+            <div class="feat"><div class="fi"></div><div><h4>Rester informée</h4><p>Notifications temps réel, échéances, canaux Email / SMS / in-app.</p></div></div>
+          </div>
+          <div class="roles">
+            <span class="role">Accessible · mobile</span><span class="role">Ton institutionnel</span><span class="role">RLS · données privées</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 — SECTION DIRECTION -->
+  <section data-label="Section · Direction">
+    <div class="sec" data-screen-label="03 Section Direction">
+      <div class="signo">01</div>
+      <h2 class="seti">Portail Direction</h2>
+      <p class="sesub">L'espace de travail des équipes DNPEC : du pilotage des campagnes à la production des indices conjoncturels.</p>
+      <div class="rule"></div>
+      <div class="tags">
+        <span class="tg">Tableau de bord</span>
+        <span class="tg">Entreprises</span>
+        <span class="tg">Validation</span>
+        <span class="tg">Campagnes</span>
+        <span class="tg">Analytique</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 — DASHBOARD DIRECTION -->
+  <section data-label="Tableau de bord global">
+    <div class="slide" data-screen-label="04 Tableau de bord global">
+      <div class="mhead">
+        <div>
+          <div class="eyebrow">Direction · Accueil</div>
+          <h2 class="ttl">Tableau de bord global</h2>
+        </div>
+        <div class="right">
+          <span class="pill mono">⌘K command palette</span>
+          <span class="pill acc">Temps réel</span>
+        </div>
+      </div>
+      <div class="mrow">
+        <div class="scr">
+          <div class="side">
+            <div class="brand"><div class="logo">D</div><div><b>DNPEC</b><span>Direction</span></div></div>
+            <div class="nav on"><span class="ic"></span>Tableau de bord</div>
+            <div class="nav"><span class="ic"></span>Entreprises<span class="ct">312</span></div>
+            <div class="nav"><span class="ic"></span>Campagnes<span class="ct">4</span></div>
+            <div class="nav"><span class="ic"></span>Validation<span class="ct">37</span></div>
+            <div class="nav"><span class="ic"></span>Analytique</div>
+            <div class="grp">Administration</div>
+            <div class="nav lock"><span class="ic"></span>Utilisateurs<span class="ct">🔒</span></div>
+            <div class="nav"><span class="ic"></span>Journal d'audit</div>
+          </div>
+          <div class="main">
+            <div class="top"><span class="crumb"><b>Tableau de bord</b></span><div class="search"><span class="mag"></span>Rechercher une entreprise, un NIF…<span class="kbd">⌘K</span></div><div class="ava">FK</div></div>
+            <div class="content">
+              <div class="kgrid">
+                <div class="kpi"><div class="lbl">Entreprises</div><div class="val">312</div><div class="dl up">▲ 18 ce trimestre</div><div class="spark"><i style="height:40%"></i><i style="height:55%"></i><i style="height:48%"></i><i style="height:70%"></i><i style="height:62%"></i><i style="height:85%"></i><i style="height:100%"></i></div></div>
+                <div class="kpi"><div class="lbl">Campagnes actives</div><div class="val">4</div><div class="dl up">▲ 1 vs N-1</div><div class="spark"><i style="height:30%"></i><i style="height:30%"></i><i style="height:50%"></i><i style="height:50%"></i><i style="height:70%"></i><i style="height:70%"></i><i style="height:100%"></i></div></div>
+                <div class="kpi"><div class="lbl">À valider</div><div class="val">37</div><div class="dl down">▲ 12 aujourd'hui</div><div class="spark"><i style="height:55%"></i><i style="height:40%"></i><i style="height:62%"></i><i style="height:48%"></i><i style="height:80%"></i><i style="height:65%"></i><i style="height:90%"></i></div></div>
+                <div class="kpi"><div class="lbl">Taux de réponse</div><div class="val">68 %</div><div class="dl up">▲ 4 pts</div><div class="spark"><i style="height:50%"></i><i style="height:60%"></i><i style="height:58%"></i><i style="height:72%"></i><i style="height:70%"></i><i style="height:84%"></i><i style="height:92%"></i></div></div>
+              </div>
+              <div class="panes">
+                <div class="pane">
+                  <h5>Évolution des soumissions</h5>
+                  <p class="cap">30 derniers jours · 90 j · 12 mois</p>
+                  <div class="bars">
+                    <div class="b"><i style="height:42%"></i><span>S1</span></div>
+                    <div class="b"><i style="height:55%"></i><span>S2</span></div>
+                    <div class="b"><i style="height:48%"></i><span>S3</span></div>
+                    <div class="b"><i style="height:70%"></i><span>S4</span></div>
+                    <div class="b"><i style="height:64%"></i><span>S5</span></div>
+                    <div class="b"><i style="height:82%"></i><span>S6</span></div>
+                    <div class="b"><i style="height:76%"></i><span>S7</span></div>
+                    <div class="b"><i style="height:100%"></i><span>S8</span></div>
+                  </div>
+                </div>
+                <div class="pane">
+                  <h5>Participation par secteur</h5>
+                  <p class="cap">Soumissions reçues / ciblées</p>
+                  <div class="hbar"><span class="nm">Commerce</span><span class="track"><i style="width:84%"></i></span><span class="pc">84 %</span></div>
+                  <div class="hbar"><span class="nm">Industrie</span><span class="track"><i style="width:71%"></i></span><span class="pc">71 %</span></div>
+                  <div class="hbar"><span class="nm">Services</span><span class="track"><i style="width:62%"></i></span><span class="pc">62 %</span></div>
+                  <div class="hbar"><span class="nm">BTP</span><span class="track"><i style="width:45%"></i></span><span class="pc">45 %</span></div>
+                  <div class="hbar"><span class="nm">Transport</span><span class="track"><i style="width:38%"></i></span><span class="pc">38 %</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="note"><div class="num">1</div><div><h4>4 KPI avec delta &amp; sparkline</h4><p>Valeurs en chiffres tabulaires mono, tendance période sur période.</p></div></div>
+          <div class="note"><div class="num">2</div><div><h4>Graphiques sobres, sans slop</h4><p>Barres et jauges Recharts, basculables 30 j / 90 j / 12 mois.</p></div></div>
+          <div class="note"><div class="num">3</div><div><h4>Bloc « à traiter » actionnable</h4><p>File de validation, inscriptions, campagne qui clôture — liens directs.</p></div></div>
+          <div class="note"><div class="num">4</div><div><h4>Skeletons par composant</h4><p>Chargement progressif, jamais un spinner plein écran.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 — ENTREPRISES TABLE -->
+  <section data-label="Liste des entreprises">
+    <div class="slide" data-screen-label="05 Liste des entreprises">
+      <div class="mhead">
+        <div>
+          <div class="eyebrow">Direction · Entreprises</div>
+          <h2 class="ttl">Liste des entreprises &amp; inscriptions</h2>
+        </div>
+        <div class="right">
+          <span class="pill mono">Pagination serveur</span>
+          <span class="pill acc">Actions groupées</span>
+        </div>
+      </div>
+      <div class="mrow">
+        <div class="scr">
+          <div class="side">
+            <div class="brand"><div class="logo">D</div><div><b>DNPEC</b><span>Direction</span></div></div>
+            <div class="nav"><span class="ic"></span>Tableau de bord</div>
+            <div class="nav on"><span class="ic"></span>Entreprises<span class="ct">312</span></div>
+            <div class="nav"><span class="ic"></span>Campagnes<span class="ct">4</span></div>
+            <div class="nav"><span class="ic"></span>Validation<span class="ct">37</span></div>
+            <div class="nav"><span class="ic"></span>Analytique</div>
+            <div class="grp">Administration</div>
+            <div class="nav lock"><span class="ic"></span>Utilisateurs<span class="ct">🔒</span></div>
+            <div class="nav"><span class="ic"></span>Journal d'audit</div>
+          </div>
+          <div class="main">
+            <div class="top"><span class="crumb">Entreprises › <b>Toutes</b></span><div class="search"><span class="mag"></span>Nom, NIF, RCCM…<span class="kbd">⌘K</span></div><div class="ava">FK</div></div>
+            <div class="content">
+              <div class="toolbar">
+                <span class="chip x">Secteur : Commerce</span>
+                <span class="chip x">Taille : PME</span>
+                <span class="chip">Statut : Tous ▾</span>
+                <span class="btn-g btn" style="margin-left:auto">Réinitialiser</span>
+                <span class="btn btn-p">Importer CSV / Excel</span>
+              </div>
+              <div class="selbar">3 entreprises sélectionnées<div class="sp"><span class="gb">Exporter</span><span class="gb">Changer le statut</span></div></div>
+              <table class="tbl">
+                <thead><tr><th style="width:30px"></th><th>Entreprise</th><th>NIF</th><th>Secteur</th><th>Taille</th><th class="num">Soumissions</th><th>Statut</th></tr></thead>
+                <tbody>
+                  <tr class="sel"><td><span class="ck"></span></td><td class="co">Établissements Camara &amp; Fils</td><td class="nif">693 204 118</td><td>Commerce</td><td>PME</td><td class="num">14</td><td><span class="badge b-ok"><span class="dot"></span>Active</span></td></tr>
+                  <tr class="sel"><td><span class="ck"></span></td><td class="co">SOGUIPAH Industries</td><td class="nif">418 770 552</td><td>Industrie</td><td>Grande</td><td class="num">22</td><td><span class="badge b-ok"><span class="dot"></span>Active</span></td></tr>
+                  <tr><td><span class="ck"></span></td><td class="co">Diallo Logistique SARL</td><td class="nif">552 019 437</td><td>Transport</td><td>PME</td><td class="num">9</td><td><span class="badge b-warn"><span class="dot"></span>En attente</span></td></tr>
+                  <tr class="sel"><td><span class="ck"></span></td><td class="co">Conakry Textile</td><td class="nif">710 884 026</td><td>Industrie</td><td>PME</td><td class="num">11</td><td><span class="badge b-ok"><span class="dot"></span>Active</span></td></tr>
+                  <tr><td><span class="ck"></span></td><td class="co">Bah Négoce Import-Export</td><td class="nif">204 663 891</td><td>Commerce</td><td>TPE</td><td class="num">3</td><td><span class="badge b-neu"><span class="dot"></span>Suspendue</span></td></tr>
+                  <tr><td><span class="ck"></span></td><td class="co">Guinée Agro Services</td><td class="nif">887 145 730</td><td>Services</td><td>PME</td><td class="num">0</td><td><span class="badge b-bad"><span class="dot"></span>Rejetée</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="note"><div class="num">1</div><div><h4>Recherche debounced</h4><p>Nom, NIF ou RCCM, avec filtres secteur / taille / statut combinables.</p></div></div>
+          <div class="note"><div class="num">2</div><div><h4>Chips de filtres actifs</h4><p>Supprimables un à un, bouton « Réinitialiser ».</p></div></div>
+          <div class="note"><div class="num">3</div><div><h4>Sélection → barre groupée</h4><p>Export, changement de statut. Tri par colonne, ligne cliquable → fiche.</p></div></div>
+          <div class="note"><div class="num">4</div><div><h4>Onglet inscriptions</h4><p>Valider / Rejeter par ligne ; rejet = motif requis (Dialog + zod).</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 — VALIDATION (écran clé) -->
+  <section data-label="Validation d'une soumission">
+    <div class="slide" data-screen-label="06 Validation soumission">
+      <div class="mhead">
+        <div>
+          <div class="eyebrow">Direction · Validation — écran clé</div>
+          <h2 class="ttl">Validation d'une soumission</h2>
+        </div>
+        <div class="right">
+          <span class="pill mono">Raccourcis V · R · ←→</span>
+          <span class="pill acc">Anomalies détectées</span>
+        </div>
+      </div>
+      <div class="mrow">
+        <div class="scr">
+          <div class="main">
+            <div class="top"><span class="crumb">Validation › <b>Établissements Camara &amp; Fils</b> · T3 2025</span><span class="badge b-warn" style="margin-left:18px"><span class="dot"></span>2 anomalies</span><div class="ava" style="margin-left:auto">FK</div></div>
+            <div class="vsplit">
+              <div class="vans">
+                <div class="vrow"><span class="q">Chiffre d'affaires du trimestre</span><span class="a">4 820 000 000 GNF <span class="prev">T2 : 4 510 000 000</span></span></div>
+                <div class="vrow"><span class="q">Effectif total déclaré</span><span class="a">320 <span class="prev">T2 : 318</span></span></div>
+                <div class="vrow flag"><span class="q">Répartition : cadres + employés + ouvriers</span><span class="a">240 + 95 + 0 = 335</span></div>
+                <div class="vflagmsg">Incohérence : la somme (335) diffère de l'effectif total déclaré (320). Écart de +15.</div>
+                <div class="vrow"><span class="q">Taux d'utilisation des capacités</span><span class="a">71 % <span class="prev">T2 : 68 %</span></span></div>
+                <div class="vrow flag"><span class="q">Investissements du trimestre</span><span class="a">98 000 000 000 GNF</span></div>
+                <div class="vflagmsg">Valeur aberrante : 20× la médiane sectorielle (seuil Industrie, CDC §4.6.2). À confirmer.</div>
+                <div class="vrow"><span class="q">Opinion sur l'activité future</span><span class="a">Favorable</span></div>
+                <div class="vrow"><span class="q">Pièce jointe — bilan simplifié</span><span class="a"><span class="badge b-info"><span class="dot"></span>bilan_T3.pdf</span></span></div>
+              </div>
+              <div class="vact">
+                <h5>Décision</h5>
+                <div class="vbtn v-ok">Valider <span class="k">V</span></div>
+                <div class="vbtn v-warn">Demander une correction <span class="k">C</span></div>
+                <div class="vbtn v-bad">Rejeter (motif requis) <span class="k">R</span></div>
+                <div style="height:1px;background:var(--border);margin:6px 0"></div>
+                <h5>Comparaison</h5>
+                <div class="hbar"><span class="nm" style="width:70px">T1</span><span class="track"><i style="width:70%"></i></span></div>
+                <div class="hbar"><span class="nm" style="width:70px">T2</span><span class="track"><i style="width:78%"></i></span></div>
+                <div class="hbar"><span class="nm" style="width:70px">T3</span><span class="track"><i style="width:84%;background:var(--ok)"></i></span></div>
+                <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;font-size:15px;color:var(--t3)"><span class="mono">12 / 37</span><span>← Précédente · Suivante →</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="note"><div class="num">1</div><div><h4>Disposition côte-à-côte</h4><p>Réponses à gauche, colonne décision collante à droite. Toggle « empilé ».</p></div></div>
+          <div class="note"><div class="num">2</div><div><h4>Anomalies surlignées</h4><p>Incohérences et valeurs aberrantes en ambre, avec explication et seuil sectoriel.</p></div></div>
+          <div class="note"><div class="num">3</div><div><h4>Décision au clavier</h4><p>V valider · C corriger · R rejeter · ←→ soumission suivante, sans quitter l'écran.</p></div></div>
+          <div class="note"><div class="num">4</div><div><h4>Optimiste + notifié</h4><p>Toast immédiat, rollback si erreur, notification envoyée à l'entreprise.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 — CAMPAGNE WIZARD -->
+  <section data-label="Création de campagne">
+    <div class="slide" data-screen-label="07 Création campagne">
+      <div class="mhead">
+        <div>
+          <div class="eyebrow">Direction · Campagnes</div>
+          <h2 class="ttl">Création de campagne</h2>
+        </div>
+        <div class="right">
+          <span class="pill mono">Validation zod par étape</span>
+          <span class="pill acc">Autosave brouillon</span>
+        </div>
+      </div>
+      <div class="mrow">
+        <div class="scr">
+          <div class="main">
+            <div class="top"><span class="crumb">Campagnes › <b>Nouvelle campagne</b></span><span class="badge b-neu" style="margin-left:16px">Brouillon · enregistré à 14:22</span><div class="ava" style="margin-left:auto">FK</div></div>
+            <div class="content" style="display:flex;flex-direction:column">
+              <div class="stepper">
+                <div class="stp done"><span class="n">✓</span>Informations</div><span class="ln"></span>
+                <div class="stp on"><span class="n">2</span>Cible</div><span class="ln"></span>
+                <div class="stp"><span class="n">3</span>Calendrier</div><span class="ln"></span>
+                <div class="stp"><span class="n">4</span>Récapitulatif</div>
+              </div>
+              <div class="panes" style="flex:1">
+                <div class="pane">
+                  <h5>Ciblage</h5>
+                  <p class="cap">Sélection des entreprises destinataires</p>
+                  <div class="field" style="margin-bottom:12px"><label>Secteur d'activité</label><div class="inp">Industrie manufacturière <span class="u">▾</span></div></div>
+                  <div class="field" style="margin-bottom:12px"><label>Taille d'entreprise</label><div class="inp">PME · Grande entreprise <span class="u">2 sélectionnées</span></div></div>
+                  <div class="field ok"><label>Formulaire type <span class="u" style="font-family:var(--sans);color:var(--t4)">déduit du secteur</span></label><div class="inp">Conjoncture Industrie — v3 <span class="u" style="color:var(--accent-ink)">Prévisualiser →</span></div><div class="hint">1 secteur = 1 formulaire type (CDC §4.4). Lecture seule.</div></div>
+                </div>
+                <div class="pane" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:var(--accent-wash);border-color:#cfe0ff">
+                  <div class="lbl" style="font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);font-weight:600">Entreprises correspondantes</div>
+                  <div class="mono" style="font-size:72px;font-weight:700;color:var(--accent-ink);letter-spacing:-.03em;line-height:1.1">47</div>
+                  <div style="font-size:16px;color:var(--t3)">recalculé en direct selon la cible</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding-top:14px;border-top:1px solid var(--border);margin-top:14px">
+                <span class="btn btn-s">← Précédent</span>
+                <span class="btn btn-g">Enregistrer en brouillon</span>
+                <span class="btn btn-p" style="margin-left:auto">Suivant →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="note"><div class="num">1</div><div><h4>Wizard 4 étapes</h4><p>Informations → Cible → Calendrier → Récapitulatif. Suivant bloqué si invalide.</p></div></div>
+          <div class="note"><div class="num">2</div><div><h4>Formulaire déduit du secteur</h4><p>Automatique, en lecture seule, prévisualisable dans un Sheet.</p></div></div>
+          <div class="note"><div class="num">3</div><div><h4>Compteur live de cible</h4><p>« 47 entreprises correspondent » se recalcule à chaque changement.</p></div></div>
+          <div class="note"><div class="num">4</div><div><h4>Envoi audité</h4><p>Dialog de confirmation : « notifiera N entreprises, action auditée ».</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 — ANALYTIQUE -->
+  <section data-label="Tableau de bord analytique">
+    <div class="slide" data-screen-label="08 Analytique ICA ICE">
+      <div class="mhead">
+        <div>
+          <div class="eyebrow">Direction · Analytique</div>
+          <h2 class="ttl">Tableau de bord analytique — ICA / ICE</h2>
+        </div>
+        <div class="right">
+          <span class="pill mono">Export xlsx · csv · dta · rds</span>
+          <span class="pill acc">Données anonymisées</span>
+        </div>
+      </div>
+      <div class="mrow">
+        <div class="scr">
+          <div class="side">
+            <div class="brand"><div class="logo">D</div><div><b>DNPEC</b><span>Direction</span></div></div>
+            <div class="nav"><span class="ic"></span>Tableau de bord</div>
+            <div class="nav"><span class="ic"></span>Entreprises<span class="ct">312</span></div>
+            <div class="nav"><span class="ic"></span>Campagnes<span class="ct">4</span></div>
+            <div class="nav"><span class="ic"></span>Validation<span class="ct">37</span></div>
+            <div class="nav on"><span class="ic"></span>Analytique</div>
+            <div class="grp">Administration</div>
+            <div class="nav"><span class="ic"></span>Journal d'audit</div>
+          </div>
+          <div class="main">
+            <div class="top"><span class="crumb"><b>Analytique conjoncturelle</b></span><span class="chip" style="margin-left:16px">T3 2025 vs T2 2025 ▾</span><span class="chip">Secteur : Tous ▾</span><span class="btn btn-p" style="margin-left:auto">Exporter ▾</span></div>
+            <div class="content">
+              <div class="kgrid" style="grid-template-columns:repeat(3,1fr)">
+                <div class="kpi"><div class="lbl">Indice du climat des affaires (ICA)</div><div class="val">104,2</div><div class="dl up">▲ 2,8 pts vs T2</div><div class="spark"><i style="height:60%"></i><i style="height:55%"></i><i style="height:68%"></i><i style="height:64%"></i><i style="height:80%"></i><i style="height:88%"></i><i style="height:100%"></i></div></div>
+                <div class="kpi"><div class="lbl">Indice de confiance entreprises (ICE)</div><div class="val">98,6</div><div class="dl down">▼ 1,1 pt vs T2</div><div class="spark"><i style="height:80%"></i><i style="height:75%"></i><i style="height:82%"></i><i style="height:70%"></i><i style="height:72%"></i><i style="height:66%"></i><i style="height:62%"></i></div></div>
+                <div class="kpi"><div class="lbl">Balance d'opinion — activité</div><div class="val">+12 pts</div><div class="dl up">▲ 5 pts</div><div class="spark"><i style="height:40%"></i><i style="height:48%"></i><i style="height:44%"></i><i style="height:60%"></i><i style="height:66%"></i><i style="height:78%"></i><i style="height:92%"></i></div></div>
+              </div>
+              <div class="panes">
+                <div class="pane">
+                  <h5>Répartition des opinions — perspective d'activité</h5>
+                  <p class="cap">Empilé 100 % · par secteur</p>
+                  <div class="hbar"><span class="nm">Commerce</span><span class="track" style="background:var(--bad-wash)"><i style="width:58%;background:var(--ok)"></i></span><span class="pc">+18</span></div>
+                  <div class="hbar"><span class="nm">Industrie</span><span class="track" style="background:var(--bad-wash)"><i style="width:52%;background:var(--ok)"></i></span><span class="pc">+9</span></div>
+                  <div class="hbar"><span class="nm">Services</span><span class="track" style="background:var(--bad-wash)"><i style="width:49%;background:var(--ok)"></i></span><span class="pc">+2</span></div>
+                  <div class="hbar"><span class="nm">BTP</span><span class="track" style="background:var(--bad-wash)"><i style="width:41%;background:var(--warn)"></i></span><span class="pc">−7</span></div>
+                  <div class="hbar"><span class="nm">Transport</span><span class="track" style="background:var(--bad-wash)"><i style="width:46%;background:var(--ok)"></i></span><span class="pc">−1</span></div>
+                </div>
+                <div class="pane">
+                  <h5>Agrégats par secteur</h5>
+                  <p class="cap">Moyennes &amp; balance d'opinion</p>
+                  <table class="tbl" style="font-size:15px">
+                    <thead><tr><th>Secteur</th><th class="num">CA moy.</th><th class="num">Balance</th></tr></thead>
+                    <tbody>
+                      <tr><td>Commerce</td><td class="num">3,9 Md</td><td class="num" style="color:var(--ok)">+18</td></tr>
+                      <tr><td>Industrie</td><td class="num">6,2 Md</td><td class="num" style="color:var(--ok)">+9</td></tr>
+                      <tr><td>Services</td><td class="num">2,1 Md</td><td class="num" style="color:var(--ok)">+2</td></tr>
+                      <tr><td>BTP</td><td class="num">4,5 Md</td><td class="num" style="color:var(--bad)">−7</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="note"><div class="num">1</div><div><h4>Indices ICA &amp; ICE</h4><p>Avec delta période, note « méthodologie fournie par la Division Conjoncture ».</p></div></div>
+          <div class="note"><div class="num">2</div><div><h4>Comparaison multi-périodes</h4><p>Filtres période, secteur, taille, statut public / privé.</p></div></div>
+          <div class="note"><div class="num">3</div><div><h4>Agrégats sectoriels</h4><p>Moyennes, médianes, totaux, balance d'opinion colorée.</p></div></div>
+          <div class="note"><div class="num">4</div><div><h4>Export asynchrone</h4><p>Déclenche un job, toast « préparation… », notification quand prêt.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 — SECTION ENTREPRISE -->
+  <section data-label="Section · Entreprise">
+    <div class="sec" data-screen-label="09 Section Entreprise">
+      <div class="signo">02</div>
+      <h2 class="seti">Portail Entreprise</h2>
+      <p class="sesub">Pensé pour des non-techniciens, accessible et mobile : répondre aux campagnes simplement, suivre ses soumissions en confiance.</p>
+      <div class="rule"></div>
+      <div class="tags">
+        <span class="tg">Tableau de bord</span>
+        <span class="tg">Remplir un formulaire</span>
+        <span class="tg">Mes soumissions</span>
+        <span class="tg">Notifications</span>
+        <span class="tg">Profil</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 — DASHBOARD ENTREPRISE -->
+  <section data-label="Tableau de bord entreprise">
+    <div class="slide" data-screen-label="10 Tableau de bord entreprise">
+      <div class="mhead">
+        <div>
+          <div class="eyebrow">Entreprise · Accueil</div>
+          <h2 class="ttl">Tableau de bord entreprise</h2>
+        </div>
+        <div class="right">
+          <span class="pill mono">Accessible · mobile</span>
+          <span class="pill acc">Ton institutionnel</span>
+        </div>
+      </div>
+      <div class="mrow">
+        <div class="scr">
+          <div class="side" style="background:#0D1B2E">
+            <div class="brand"><div class="logo">E</div><div><b>Camara &amp; Fils</b><span>Espace entreprise</span></div></div>
+            <div class="nav on"><span class="ic"></span>Accueil</div>
+            <div class="nav"><span class="ic"></span>À remplir<span class="ct">2</span></div>
+            <div class="nav"><span class="ic"></span>Mes soumissions</div>
+            <div class="nav"><span class="ic"></span>Notifications<span class="ct">3</span></div>
+            <div class="nav"><span class="ic"></span>Profil</div>
+          </div>
+          <div class="main">
+            <div class="top"><span class="crumb"><b>Bonjour, Mariama</b></span><div class="ava" style="margin-left:auto">MC</div></div>
+            <div class="content">
+              <div style="background:var(--warn-wash);border:1px solid #f0dca0;border-radius:10px;padding:13px 18px;display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:17px;color:var(--warn-ink);font-weight:500"><span class="badge b-warn"><span class="dot"></span>Échéance proche</span>Enquête de conjoncture T3 2025 — à soumettre avant le <b class="mono">&nbsp;12 oct. 2025</b>.</div>
+              <div class="panes" style="grid-template-columns:1fr 1fr">
+                <div class="pane">
+                  <h5>À remplir</h5><p class="cap">Campagnes en cours</p>
+                  <div style="border:1px solid var(--border-strong);border-radius:10px;padding:16px;margin-bottom:12px">
+                    <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:19px">Conjoncture Industrie — T3 2025</b><span class="badge b-warn"><span class="dot"></span>J−5</span></div>
+                    <div style="font-size:15px;color:var(--t3);margin:10px 0">Brouillon · 6 sections · 40 % complété</div>
+                    <div class="progress" style="margin-bottom:14px"><i style="width:40%"></i></div>
+                    <span class="btn btn-p">Continuer →</span>
+                  </div>
+                  <div style="border:1px solid var(--border);border-radius:10px;padding:16px">
+                    <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:19px">Investissement annuel 2025</b><span class="badge b-info"><span class="dot"></span>J−21</span></div>
+                    <div style="font-size:15px;color:var(--t3);margin:10px 0 14px">Non commencé · 4 sections</div>
+                    <span class="btn btn-s">Commencer</span>
+                  </div>
+                </div>
+                <div class="pane">
+                  <h5>Dernières soumissions</h5><p class="cap">Historique récent</p>
+                  <table class="tbl" style="font-size:16px">
+                    <thead><tr><th>Campagne</th><th>Période</th><th>Statut</th></tr></thead>
+                    <tbody>
+                      <tr><td class="co">Conjoncture Industrie</td><td class="nif">T2 2025</td><td><span class="badge b-ok"><span class="dot"></span>Validée</span></td></tr>
+                      <tr><td class="co">Conjoncture Industrie</td><td class="nif">T1 2025</td><td><span class="badge b-ok"><span class="dot"></span>Validée</span></td></tr>
+                      <tr><td class="co">Emploi semestriel</td><td class="nif">S2 2024</td><td><span class="badge b-bad"><span class="dot"></span>À corriger</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="note"><div class="num">1</div><div><h4>Bandeau d'échéance</h4><p>Alerte claire en haut quand une échéance approche.</p></div></div>
+          <div class="note"><div class="num">2</div><div><h4>« À remplir » / « En cours »</h4><p>Cartes campagne avec échéance, progression et CTA explicite.</p></div></div>
+          <div class="note"><div class="num">3</div><div><h4>Soumissions récentes</h4><p>Statut lisible : Validée, En attente, À corriger.</p></div></div>
+          <div class="note"><div class="num">4</div><div><h4>Sobre &amp; rassurant</h4><p>Inspiré DSFR / Mon Espace Santé : confiance et clarté pour non-techniciens.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 — FORMULAIRE ENTREPRISE -->
+  <section data-label="Remplissage d'un formulaire">
+    <div class="slide" data-screen-label="11 Remplissage formulaire">
+      <div class="mhead">
+        <div>
+          <div class="eyebrow">Entreprise · Saisie</div>
+          <h2 class="ttl">Remplissage d'un formulaire</h2>
+        </div>
+        <div class="right">
+          <span class="pill mono">Sauvegarde auto · 2 min</span>
+          <span class="pill acc">Contrôles temps réel</span>
+        </div>
+      </div>
+      <div class="mrow">
+        <div class="scr">
+          <div class="main">
+            <div class="top"><span class="crumb">Conjoncture Industrie › <b>T3 2025</b></span><span style="margin-left:16px;font-size:15px;color:var(--t3)" class="mono">Sauvegardé à 14:31</span><div style="margin-left:auto;display:flex;align-items:center;gap:14px"><div class="progress" style="width:160px"><i style="width:40%"></i></div><span class="mono" style="font-size:15px;color:var(--t2)">40 %</span></div></div>
+            <div class="fwrap">
+              <div class="fnav">
+                <div class="fi done"><span class="dot">✓</span>Identification</div>
+                <div class="fi done"><span class="dot">✓</span>Chiffre d'affaires</div>
+                <div class="fi on"><span class="dot"></span>Effectifs &amp; emploi</div>
+                <div class="fi"><span class="dot"></span>Investissements</div>
+                <div class="fi"><span class="dot"></span>Opinions &amp; perspectives</div>
+                <div class="fi"><span class="dot"></span>Pièces jointes</div>
+              </div>
+              <div class="fbody">
+                <div class="field ok"><label>Effectif total au 30/09/2025 <span class="req">*</span></label><div class="inp">320 <span class="u">personnes</span></div></div>
+                <div class="field"><label>Dont cadres <span class="req">*</span></label><div class="inp">240 <span class="u">personnes</span></div></div>
+                <div class="field warn"><label>Dont employés + ouvriers <span class="req">*</span></label><div class="inp">95 <span class="u">personnes</span></div><div class="hint">⚠ 240 + 95 = 335 ≠ 320. Vérifiez la somme des effectifs.</div></div>
+                <div class="field"><label>Embauches prévues au prochain trimestre</label><div class="inp">En hausse <span class="u">▾</span></div></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 24px;border-top:1px solid var(--border);background:var(--surface)">
+              <span class="btn btn-s">← Section précédente</span>
+              <span class="btn btn-g">Enregistrer</span>
+              <span class="btn btn-p" style="margin-left:auto">Section suivante →</span>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="note"><div class="num">1</div><div><h4>Navigation par sections</h4><p>Sidebar interne avec coches de complétion + progression globale.</p></div></div>
+          <div class="note"><div class="num">2</div><div><h4>Sauvegarde auto</h4><p>Toutes les 2 min et au blur, indicateur « Sauvegardé à HH:MM ».</p></div></div>
+          <div class="note"><div class="num">3</div><div><h4>Contrôles de cohérence</h4><p>Messages d'aide explicites en temps réel (somme des effectifs).</p></div></div>
+          <div class="note"><div class="num">4</div><div><h4>Récapitulatif avant envoi</h4><p>Barre collante → Dialog → écran de confirmation. Modifiable tant qu'active.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 — MES SOUMISSIONS & NOTIF -->
+  <section data-label="Mes soumissions">
+    <div class="slide" data-screen-label="12 Mes soumissions">
+      <div class="mhead">
+        <div>
+          <div class="eyebrow">Entreprise · Suivi</div>
+          <h2 class="ttl">Mes soumissions &amp; notifications</h2>
+        </div>
+        <div class="right">
+          <span class="pill mono">Versions &amp; historique</span>
+          <span class="pill acc">Temps réel</span>
+        </div>
+      </div>
+      <div class="mrow">
+        <div class="scr">
+          <div class="side" style="background:#0D1B2E">
+            <div class="brand"><div class="logo">E</div><div><b>Camara &amp; Fils</b><span>Espace entreprise</span></div></div>
+            <div class="nav"><span class="ic"></span>Accueil</div>
+            <div class="nav"><span class="ic"></span>À remplir<span class="ct">2</span></div>
+            <div class="nav on"><span class="ic"></span>Mes soumissions</div>
+            <div class="nav"><span class="ic"></span>Notifications<span class="ct">3</span></div>
+            <div class="nav"><span class="ic"></span>Profil</div>
+          </div>
+          <div class="main">
+            <div class="top"><span class="crumb"><b>Mes soumissions</b></span><span class="chip" style="margin-left:16px">Toutes les périodes ▾</span><div class="ava" style="margin-left:auto">MC</div></div>
+            <div class="content">
+              <table class="tbl">
+                <thead><tr><th>Campagne</th><th>Période</th><th>Version</th><th>Déposée le</th><th>Statut</th></tr></thead>
+                <tbody>
+                  <tr><td class="co">Conjoncture Industrie</td><td>T3 2025</td><td class="nif">v2</td><td class="nif">10 oct. 2025</td><td><span class="badge b-warn"><span class="dot"></span>En attente</span></td></tr>
+                  <tr><td class="co">Conjoncture Industrie</td><td>T2 2025</td><td class="nif">v1</td><td class="nif">11 juil. 2025</td><td><span class="badge b-ok"><span class="dot"></span>Validée</span></td></tr>
+                  <tr><td class="co">Emploi semestriel</td><td>S2 2024</td><td class="nif">v1</td><td class="nif">18 janv. 2025</td><td><span class="badge b-bad"><span class="dot"></span>Rejetée</span></td></tr>
+                </tbody>
+              </table>
+              <div style="background:var(--bad-wash);border:1px solid #f3c2c2;border-radius:10px;padding:14px 18px;margin-top:16px;display:flex;align-items:center;gap:14px">
+                <span class="badge b-bad"><span class="dot"></span>Motif de rejet</span>
+                <span style="font-size:16px;color:var(--bad-ink)">Effectifs incohérents (section 3). Merci de corriger la répartition cadres / employés.</span>
+                <span class="btn btn-p" style="margin-left:auto">Corriger et resoumettre →</span>
+              </div>
+              <div class="pane" style="margin-top:16px">
+                <h5>Notifications récentes</h5><p class="cap">Temps réel · canaux indiqués</p>
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:16px"><span class="badge b-ok"><span class="dot"></span>Validée</span>Votre soumission T2 2025 a été validée.<span class="mono" style="margin-left:auto;color:var(--t4);font-size:14px">Email · il y a 3 j</span></div>
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 0;font-size:16px"><span class="badge b-info"><span class="dot"></span>Rappel</span>Échéance T3 2025 dans 5 jours.<span class="mono" style="margin-left:auto;color:var(--t4);font-size:14px">SMS · in-app</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="note"><div class="num">1</div><div><h4>Historique versionné</h4><p>Campagne, période, version, statut. Ligne → détail en lecture seule.</p></div></div>
+          <div class="note"><div class="num">2</div><div><h4>Rejet explicite</h4><p>Motif affiché + bouton « Corriger et resoumettre ».</p></div></div>
+          <div class="note"><div class="num">3</div><div><h4>Notifications temps réel</h4><p>Page + dropdown, marquer lu, canaux Email / SMS / in-app indiqués.</p></div></div>
+          <div class="note"><div class="num">4</div><div><h4>Profil protégé</h4><p>NIF &amp; secteur non modifiables — coordonnées éditables.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 — SECTION DESIGN SYSTEM -->
+  <section data-label="Section · Design system">
+    <div class="sec" data-screen-label="13 Section Design system">
+      <div class="signo">03</div>
+      <h2 class="seti">Design system</h2>
+      <p class="sesub">Une base de composants nette, dense et accessible — au standard d'une équipe produit senior, inspirée de Linear, Stripe et du DSFR.</p>
+      <div class="rule"></div>
+      <div class="tags">
+        <span class="tg">Tokens</span>
+        <span class="tg">Typographie</span>
+        <span class="tg">Composants</span>
+        <span class="tg">Statuts</span>
+        <span class="tg">Interactions</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 — COULEURS -->
+  <section data-label="Couleurs &amp; tokens">
+    <div class="slide" data-screen-label="14 Couleurs tokens">
+      <div style="margin-bottom:24px">
+        <div class="eyebrow">Design system · Fondations</div>
+        <h2 class="ttl" style="margin-top:12px">Couleurs &amp; tokens</h2>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:30px;flex:1;justify-content:center">
+        <div>
+          <div class="sub" style="font-size:24px;margin-bottom:14px;color:var(--t2)">Surfaces &amp; navy institutionnel</div>
+          <div class="swatches">
+            <div class="sw"><div class="cap" style="background:#0D1B2E"></div><div class="meta"><b>Sidebar</b><span>#0D1B2E</span></div></div>
+            <div class="sw"><div class="cap" style="background:#F4F7FB"></div><div class="meta"><b>Fond</b><span>#F4F7FB</span></div></div>
+            <div class="sw"><div class="cap" style="background:#FFFFFF;border-bottom:1px solid var(--border)"></div><div class="meta"><b>Surface</b><span>#FFFFFF</span></div></div>
+            <div class="sw"><div class="cap" style="background:#E7EDF6"></div><div class="meta"><b>Surface 3</b><span>#E7EDF6</span></div></div>
+            <div class="sw"><div class="cap" style="background:#2C3E55"></div><div class="meta"><b>Texte 2</b><span>#2C3E55</span></div></div>
+            <div class="sw"><div class="cap" style="background:#6272A4"></div><div class="meta"><b>Texte 3</b><span>#6272A4</span></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="sub" style="font-size:24px;margin-bottom:14px;color:var(--t2)">Accent &amp; statuts sémantiques</div>
+          <div class="swatches">
+            <div class="sw"><div class="cap" style="background:#2563EB"></div><div class="meta"><b>Accent</b><span>#2563EB</span></div></div>
+            <div class="sw"><div class="cap" style="background:#16A34A"></div><div class="meta"><b>Succès</b><span>#16A34A</span></div></div>
+            <div class="sw"><div class="cap" style="background:#F59E0B"></div><div class="meta"><b>Attente</b><span>#F59E0B</span></div></div>
+            <div class="sw"><div class="cap" style="background:#EF4444"></div><div class="meta"><b>Rejet</b><span>#EF4444</span></div></div>
+            <div class="sw"><div class="cap" style="background:#95A5BF"></div><div class="meta"><b>Neutre</b><span>#95A5BF</span></div></div>
+            <div class="sw"><div class="cap" style="background:#8B5CF6"></div><div class="meta"><b>Audit</b><span>#8B5CF6</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 — TYPOGRAPHIE -->
+  <section data-label="Typographie">
+    <div class="slide" data-screen-label="15 Typographie">
+      <div style="margin-bottom:24px">
+        <div class="eyebrow">Design system · Fondations</div>
+        <h2 class="ttl" style="margin-top:12px">Typographie &amp; chiffres tabulaires</h2>
+      </div>
+      <div class="dsrow">
+        <div class="typ">
+          <div class="tr"><div class="tk">Inter · Display 28</div><div style="font-size:34px;font-weight:700;color:var(--t1)">Indice du climat des affaires</div></div>
+          <div class="tr"><div class="tk">Inter · Titre 20</div><div style="font-size:26px;font-weight:650;color:var(--t1)">Validation d'une soumission</div></div>
+          <div class="tr"><div class="tk">Inter · Corps 13.5</div><div style="font-size:22px;color:var(--t2)">Le texte d'interface reste dense, lisible et hiérarchisé.</div></div>
+          <div class="tr"><div class="tk">Inter · Légende 11</div><div style="font-size:18px;color:var(--t3);letter-spacing:.04em;text-transform:uppercase;font-weight:600">Étiquette de section</div></div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div class="typ">
+          <div class="tr"><div class="tk">JetBrains Mono · Montant</div><div class="mono" style="font-size:30px;font-weight:600;color:var(--t1)">4 820 000 000 GNF</div></div>
+          <div class="tr"><div class="tk">Mono · NIF / codes</div><div class="mono" style="font-size:26px;color:var(--t2)">693 204 118</div></div>
+          <div class="tr"><div class="tk">Mono · Pourcentage</div><div class="mono" style="font-size:26px;color:var(--t2)">68 %&nbsp;&nbsp;·&nbsp;&nbsp;+12 pts</div></div>
+          <div class="tr"><div class="tk">Mono · Date / horodatage</div><div class="mono" style="font-size:24px;color:var(--t3)">12 oct. 2025 · 14:31</div></div>
+          <div style="font-size:18px;color:var(--t3);line-height:1.5">Tous les chiffres en <b>tabulaires mono</b>, alignés à droite dans les tables. Format <span class="mono">fr-FR</span>, GNF à séparateur d'espace insécable.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 — COMPOSANTS & STATUTS -->
+  <section data-label="Composants &amp; statuts">
+    <div class="slide" data-screen-label="16 Composants statuts">
+      <div style="margin-bottom:24px">
+        <div class="eyebrow">Design system · Bibliothèque</div>
+        <h2 class="ttl" style="margin-top:12px">Composants &amp; statuts</h2>
+      </div>
+      <div class="compgrid">
+        <div class="cc">
+          <h5>Boutons</h5>
+          <div class="demo"><span class="btn btn-p">Primaire</span><span class="btn btn-s">Secondaire</span><span class="btn btn-ok">Valider</span></div>
+          <div class="demo"><span class="btn btn-bad">Rejeter</span><span class="btn btn-g">Ghost</span></div>
+          <h5 style="margin-top:6px">Tailles &amp; états</h5>
+          <div class="demo"><span class="btn btn-p" style="font-size:14px;padding:6px 12px">sm</span><span class="btn btn-p">md</span><span class="btn btn-s" style="opacity:.5">disabled</span></div>
+        </div>
+        <div class="cc">
+          <h5>Badges de statut</h5>
+          <div class="demo"><span class="badge b-ok"><span class="dot"></span>Validée</span><span class="badge b-warn"><span class="dot"></span>En attente</span></div>
+          <div class="demo"><span class="badge b-bad"><span class="dot"></span>Rejetée</span><span class="badge b-info"><span class="dot"></span>Planifiée</span></div>
+          <div class="demo"><span class="badge b-neu"><span class="dot"></span>Suspendue</span><span class="badge b-vio"><span class="dot"></span>Audit</span></div>
+          <p style="margin:4px 0 0;font-size:15px;color:var(--t3)">Un composant unique piloté par un enum de statut.</p>
+        </div>
+        <div class="cc">
+          <h5>Champs de formulaire</h5>
+          <div class="field ok" style="width:100%;padding:10px 12px"><div class="inp" style="height:38px">320 <span class="u">✓ valide</span></div></div>
+          <div class="field warn" style="width:100%;padding:10px 12px"><div class="inp" style="height:38px">335 <span class="u">⚠ incohérent</span></div></div>
+        </div>
+        <div class="cc">
+          <h5>Champ KPI</h5>
+          <div class="kpi" style="box-shadow:none"><div class="lbl">Taux de réponse</div><div class="val">68 %</div><div class="dl up">▲ 4 pts</div></div>
+        </div>
+        <div class="cc">
+          <h5>Filtres &amp; chips</h5>
+          <div class="demo"><span class="chip x">Secteur : Commerce</span></div>
+          <div class="demo"><span class="chip">Statut ▾</span><span class="chip">Période ▾</span></div>
+        </div>
+        <div class="cc">
+          <h5>États obligatoires</h5>
+          <div class="demo" style="gap:8px"><span class="chip">Loading · skeleton</span><span class="chip">Vide</span></div>
+          <div class="demo" style="gap:8px"><span class="chip">Erreur · retry</span><span class="chip">Succès</span></div>
+          <p style="margin:4px 0 0;font-size:15px;color:var(--t3)">Sur chaque écran de données. Jamais d'écran blanc.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 17 — PRINCIPES D'INTERACTION -->
+  <section data-label="Principes d'interaction">
+    <div class="slide" data-screen-label="17 Principes interaction">
+      <div style="margin-bottom:24px">
+        <div class="eyebrow">Design system · Comportement</div>
+        <h2 class="ttl" style="margin-top:12px">Principes d'interaction</h2>
+      </div>
+      <div class="princ">
+        <div class="pr"><div class="pk">⌘K</div><div><h4>Command palette &amp; clavier</h4><p>Recherche entreprises, navigation et actions rapides. Raccourcis sur les écrans denses, cheat-sheet via «&nbsp;?&nbsp;».</p></div></div>
+        <div class="pr"><div class="pk">⟳</div><div><h4>Optimiste &amp; temps réel</h4><p>Mises à jour optimistes avec rollback ; compteurs et notifications Supabase Realtime en direct.</p></div></div>
+        <div class="pr"><div class="pk">▦</div><div><h4>États réels partout</h4><p>Loading (skeleton), vide, erreur, succès. Toasts pour chaque action, jamais d'alert().</p></div></div>
+        <div class="pr"><div class="pk">⊘</div><div><h4>Permissions par rôle</h4><p>Les actions hors périmètre sont désactivées et verrouillées visuellement, pas seulement masquées.</p></div></div>
+        <div class="pr"><div class="pk">↪</div><div><h4>Transitions sobres</h4><p>120–200 ms, ease-out, aucun bounce. Fondus de route discrets, jamais de slide spectaculaire.</p></div></div>
+        <div class="pr"><div class="pk">A11y</div><div><h4>Accessibilité AA</h4><p>focus-visible, navigation clavier, ARIA, cibles ≥ 44px. Entreprise responsive mobile.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 18 — CLÔTURE -->
+  <section data-label="Une base production-ready">
+    <div class="sec" data-screen-label="18 Clôture" style="justify-content:space-between">
+      <div style="position:relative;z-index:1">
+        <div class="cv-kick" style="color:#7fa9ff;margin-top:10px">En résumé</div>
+        <h2 class="seti" style="font-size:64px;margin-top:18px;max-width:1300px">Une base nette, dense et prête pour la production</h2>
+      </div>
+      <div style="position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,1fr);gap:30px;margin:auto 0">
+        <div><div class="mono" style="font-size:56px;font-weight:700;color:#7fa9ff;letter-spacing:-.02em">2</div><div style="font-size:24px;color:#cdd8ec;margin-top:8px">portails complets, du pilotage à la saisie entreprise</div></div>
+        <div><div class="mono" style="font-size:56px;font-weight:700;color:#7fa9ff;letter-spacing:-.02em">1</div><div style="font-size:24px;color:#cdd8ec;margin-top:8px">design system cohérent : tokens, composants, statuts</div></div>
+        <div><div class="mono" style="font-size:56px;font-weight:700;color:#7fa9ff;letter-spacing:-.02em">0</div><div style="font-size:24px;color:#cdd8ec;margin-top:8px">slop — chaque écran net, accessible et intentionnel</div></div>
+      </div>
+      <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid rgba(255,255,255,.14);padding-top:26px">
+        <div style="font-size:24px;color:#9fb0cf">Prochaine étape : revue par la Direction, puis intégration Supabase &amp; déploiement par phases.</div>
+        <div class="cv-foot" style="color:#7d8eb0">DNPEC · Ministère du Plan<br>République de Guinée</div>
+      </div>
+    </div>
+  </section>
+
+</deck-stage>
+
+<!-- Tweaks -->
+<div id="tweaks-root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "cover": "b",
+    "accent": "#1B4FCE"
+  }/*EDITMODE-END*/;
+
+  function DeckTweaks(){
+    const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+    React.useEffect(()=>{ document.documentElement.setAttribute('data-cover', t.cover); }, [t.cover]);
+    React.useEffect(()=>{
+      document.documentElement.style.setProperty('--accent', t.accent);
+      // derive a darker ink
+      document.documentElement.style.setProperty('--accent-ink', t.accent);
+    }, [t.accent]);
+    return (
+      <TweaksPanel>
+        <TweakSection label="Slide de titre" />
+        <TweakRadio label="Direction" value={t.cover}
+          options={[{label:'Navy plein', value:'a'},{label:'Clair', value:'b'}]}
+          onChange={(v)=>setTweak('cover', v)} />
+        <TweakSection label="Marque" />
+        <TweakColor label="Accent" value={t.accent}
+          options={['#2563EB','#1B4FCE','#0F766E','#B45309']}
+          onChange={(v)=>setTweak('accent', v)} />
+      </TweaksPanel>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('tweaks-root')).render(<DeckTweaks/>);
+</script>
+<script src="deck-stage.js"></script>
+</body>
+</html>
