@@ -31,13 +31,20 @@ export async function signIn(formData: FormData) {
   const fields = loginSchema.parse(Object.fromEntries(formData));
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword(fields);
+  const { data, error } = await supabase.auth.signInWithPassword(fields);
 
-  if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  if (error || !data.user) {
+    redirect(`/login?error=${encodeURIComponent(error?.message ?? "Connexion impossible")}`);
   }
 
-  redirect("/dashboard");
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .single();
+
+  const role = profile?.role ?? (data.user.user_metadata?.role as string) ?? "entreprise";
+  redirect(role === "entreprise" ? "/" : "/direction/dashboard");
 }
 
 export async function signOut() {
@@ -87,4 +94,50 @@ export async function signUpCompany(formData: FormData) {
   }
 
   redirect("/login?message=Verifiez votre email, puis attendez la validation DNPEC.");
+}
+
+export async function signUpCompanyAction(formData: FormData): Promise<{ error: string }> {
+  const parsed = companySignupSchema.safeParse(Object.fromEntries(formData));
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Données invalides" };
+  }
+
+  const fields = parsed.data;
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.auth.signUp({
+    email: fields.email,
+    password: fields.password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      data: { full_name: fields.full_name, role: "entreprise" },
+    },
+  });
+
+  if (error || !data.user) {
+    return { error: error?.message ?? "Inscription impossible" };
+  }
+
+  const admin = createAdminClient();
+  const { error: companyError } = await admin.from("companies").insert({
+    profile_id: data.user.id,
+    nif: fields.nif,
+    rccm: fields.rccm || null,
+    name: fields.name,
+    sector_id: fields.sector_id,
+    size: fields.size,
+    legal_status: fields.legal_status,
+    contact_email: fields.email,
+    phone: fields.phone,
+    address: fields.address || null,
+    creation_year: fields.creation_year || null,
+    account_status: "pending",
+  });
+
+  if (companyError) {
+    return { error: companyError.message };
+  }
+
+  redirect("/login?message=" + encodeURIComponent("Vérifiez votre email, puis attendez la validation DNPEC."));
 }

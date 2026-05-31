@@ -1,10 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Routes accessibles sans authentification
+const PUBLIC_PREFIXES = ["/auth/", "/api/"];
+const PUBLIC_EXACT = ["/", "/login", "/inscription"];
+
+// Routes réservées aux non-authentifiés (redirection si déjà connecté)
+const AUTH_ONLY_EXACT = ["/login", "/inscription"];
+
+function dashboardForRole(role: string): string {
+  return role === "entreprise" ? "/" : "/direction/dashboard";
+}
+
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({
-    request,
-  });
+  let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +34,29 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { pathname } = request.nextUrl;
+
+  const isPublic =
+    PUBLIC_EXACT.includes(pathname) ||
+    PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+
+  if (user && AUTH_ONLY_EXACT.includes(pathname)) {
+    // Utilisateur connecté sur /login ou /inscription → rediriger vers son dashboard
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    const role = profile?.role ?? (user.user_metadata?.role as string) ?? "entreprise";
+    return NextResponse.redirect(new URL(dashboardForRole(role), request.url));
+  }
+
+  if (!user && !isPublic) {
+    // Utilisateur non connecté sur une route protégée → /login
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
 
   return response;
 }
