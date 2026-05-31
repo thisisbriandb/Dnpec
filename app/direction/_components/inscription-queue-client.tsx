@@ -52,7 +52,12 @@ type RejectFormValues = z.infer<typeof rejectFormSchema>
 
 type Company = InscriptionCompany
 
-export function InscriptionQueueClient({ pending }: { pending: InscriptionCompany[] }) {
+interface InscriptionQueueProps {
+  pending: InscriptionCompany[]
+  onItemRemoved?: () => void
+}
+
+export function InscriptionQueueClient({ pending, onItemRemoved }: InscriptionQueueProps) {
   const [isPending, startTransition] = useTransition()
   const [rejectingId, setRejectingId] = React.useState<string | null>(null)
   const [data, setData] = React.useState<Company[]>(pending)
@@ -70,6 +75,7 @@ export function InscriptionQueueClient({ pending }: { pending: InscriptionCompan
       } else {
         toast.success("Entreprise validée avec succès.")
         setData((prev) => prev.filter((c) => c.id !== id))
+        onItemRemoved?.()
       }
     })
   }
@@ -93,6 +99,7 @@ export function InscriptionQueueClient({ pending }: { pending: InscriptionCompan
         toast.success("Inscription rejetée.")
         setData((prev) => prev.filter((c) => c.id !== id))
         setRejectingId(null)
+        onItemRemoved?.()
       }
     })
   }

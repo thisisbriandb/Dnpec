@@ -182,6 +182,15 @@
   --status-purple-text: #6D28D9;
 }
 
+/* ── Home page animation ──────────────────────────────────────── */
+@keyframes slide-up {
+  from { transform: translateY(110%); }
+  to   { transform: translateY(0%); }
+}
+.dark-panel {
+  animation: slide-up 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
 /* ── Base styles ──────────────────────────────────────────────── */
 @layer base {
   * {

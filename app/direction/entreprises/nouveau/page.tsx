@@ -13,11 +13,16 @@ export default async function NouvelleEntreprisePage() {
     .order("name")
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-title font-semibold text-foreground">Nouvelle entreprise</h1>
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary font-mono mb-1">
+          Entreprises · Nouvelle fiche
+        </p>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">
+          Enregistrer une entreprise
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Création par la Direction — l&apos;entreprise est immédiatement validée.
+          Création par la Direction — l&apos;entreprise est immédiatement validée, sans compte utilisateur associé.
         </p>
       </div>
       <CompanyCreateForm sectors={sectors ?? []} />

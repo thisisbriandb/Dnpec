@@ -1,12 +1,11 @@
 import { notFound } from "next/navigation"
-import Link from "next/link"
 import { Building2, Phone, Mail, MapPin, Calendar, Hash, FileText } from "lucide-react"
 import { createClient } from "@/app/lib/supabase/server"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { DataTable } from "@/components/ui/data-table"
 import { CompanyActionBar } from "@/app/direction/_components/company-action-bar"
+import { CompanyTargetsTable } from "@/app/direction/_components/company-targets-table"
 import { formatNIF, formatDate } from "@/lib/format"
-import type { ColumnDef } from "@tanstack/react-table"
+import type { TargetRow } from "@/app/direction/_components/company-targets-table"
 
 export const dynamic = "force-dynamic"
 
@@ -34,71 +33,6 @@ type CompanyDetail = {
   validator: { full_name: string } | null
   creator: { full_name: string } | null
 }
-
-type TargetRow = {
-  status: string
-  created_at: string
-  campaign: {
-    id: string
-    title: string
-    reference_period: string
-    status: string
-    opens_at: string
-    closes_at: string
-  } | null
-}
-
-const targetColumns: ColumnDef<TargetRow>[] = [
-  {
-    id: "campaign",
-    header: "Campagne",
-    cell: ({ row }) => (
-      <Link
-        href={`/direction/campagnes/${row.original.campaign?.id}`}
-        className="hover:text-primary transition-colors font-medium"
-      >
-        {row.original.campaign?.title ?? "—"}
-      </Link>
-    ),
-  },
-  {
-    id: "period",
-    header: "Période",
-    size: 120,
-    enableSorting: false,
-    cell: ({ row }) => row.original.campaign?.reference_period ?? "—",
-  },
-  {
-    id: "campaign_status",
-    header: "Statut campagne",
-    size: 140,
-    enableSorting: false,
-    cell: ({ row }) => (
-      <StatusBadge status={row.original.campaign?.status ?? "draft"} />
-    ),
-  },
-  {
-    id: "target_status",
-    header: "Participation",
-    size: 130,
-    enableSorting: false,
-    cell: ({ row }) => <StatusBadge status={row.original.status} />,
-  },
-  {
-    id: "opens_at",
-    header: "Ouverture",
-    size: 110,
-    enableSorting: false,
-    cell: ({ row }) => formatDate(row.original.campaign?.opens_at),
-  },
-  {
-    id: "closes_at",
-    header: "Clôture",
-    size: 110,
-    enableSorting: false,
-    cell: ({ row }) => formatDate(row.original.campaign?.closes_at),
-  },
-]
 
 export default async function EntrepriseDetailPage({
   params,
@@ -136,17 +70,21 @@ export default async function EntrepriseDetailPage({
   if (!company) notFound()
 
   const c = company as unknown as CompanyDetail
+  const targetRows = (targets ?? []) as unknown as TargetRow[]
 
-  const infoRows = [
-    { icon: Hash, label: "NIF", value: formatNIF(c.nif) },
-    c.rccm && { icon: FileText, label: "RCCM", value: c.rccm },
-    { icon: Building2, label: "Taille", value: SIZE_LABELS[c.size] ?? c.size },
-    { icon: Building2, label: "Statut juridique", value: LEGAL_LABELS[c.legal_status] ?? c.legal_status },
-    c.creation_year && { icon: Calendar, label: "Année de création", value: String(c.creation_year) },
-    { icon: Mail, label: "Email", value: c.contact_email },
-    { icon: Phone, label: "Téléphone", value: c.phone },
-    c.address && { icon: MapPin, label: "Adresse", value: c.address },
-  ].filter(Boolean) as { icon: React.ComponentType<{ className?: string }>; label: string; value: string }[]
+  type InfoRow = { icon: React.ElementType; label: string; value: string }
+  const infoRows = (
+    [
+      { icon: Hash, label: "NIF", value: formatNIF(c.nif) },
+      c.rccm ? { icon: FileText, label: "RCCM", value: c.rccm } : null,
+      { icon: Building2, label: "Taille", value: SIZE_LABELS[c.size] ?? c.size },
+      { icon: Building2, label: "Statut juridique", value: LEGAL_LABELS[c.legal_status] ?? c.legal_status },
+      c.creation_year ? { icon: Calendar, label: "Année de création", value: String(c.creation_year) } : null,
+      { icon: Mail, label: "Email", value: c.contact_email },
+      { icon: Phone, label: "Téléphone", value: c.phone },
+      c.address ? { icon: MapPin, label: "Adresse", value: c.address } : null,
+    ] as (InfoRow | null)[]
+  ).filter((r): r is InfoRow => r !== null)
 
   return (
     <div className="p-6 max-w-5xl space-y-6">
@@ -161,10 +99,7 @@ export default async function EntrepriseDetailPage({
             {c.sector?.name ?? "Secteur inconnu"} · NIF {formatNIF(c.nif)}
           </p>
         </div>
-        <CompanyActionBar
-          companyId={c.id}
-          currentStatus={c.account_status}
-        />
+        <CompanyActionBar companyId={c.id} currentStatus={c.account_status} />
       </div>
 
       {/* Rejection reason */}
@@ -208,7 +143,7 @@ export default async function EntrepriseDetailPage({
           {c.profile ? (
             <dl className="space-y-3">
               <div className="flex items-start gap-2.5">
-                <Mail className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <Building2 className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                 <div className="min-w-0">
                   <dt className="text-xs text-muted-foreground">Nom</dt>
                   <dd className="text-sm font-medium">{c.profile.full_name}</dd>
@@ -249,14 +184,7 @@ export default async function EntrepriseDetailPage({
       {/* Historique campagnes */}
       <div>
         <h2 className="mb-4 text-sm font-semibold text-foreground">Historique des campagnes</h2>
-        <DataTable
-          data={(targets ?? []) as unknown as TargetRow[]}
-          columns={targetColumns}
-          emptyState={{
-            title: "Aucune participation",
-            description: "Cette entreprise n'a pas encore été ciblée par une campagne.",
-          }}
-        />
+        <CompanyTargetsTable data={targetRows} />
       </div>
     </div>
   )

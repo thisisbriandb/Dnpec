@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   Building2,
-  Clock,
   FileText,
   Megaphone,
   CheckSquare,
@@ -19,7 +18,7 @@ import { CommandPalette, useCommandPalette } from "@/components/ui/command-palet
 import { Topbar } from "./topbar"
 import type { AppRole } from "@/lib/status"
 
-function buildNavGroups(pendingCount: number): NavGroup[] {
+function buildNavGroups(): NavGroup[] {
   return [
     {
       label: "Vue globale",
@@ -31,12 +30,6 @@ function buildNavGroups(pendingCount: number): NavGroup[] {
       label: "Entreprises",
       items: [
         { href: "/direction/entreprises", label: "Répertoire", icon: Building2 },
-        {
-          href: "/direction/entreprises/inscriptions",
-          label: "Inscriptions en attente",
-          icon: Clock,
-          badge: pendingCount > 0 ? pendingCount : undefined,
-        },
       ],
     },
     {
@@ -89,7 +82,7 @@ export function DirectionShellClient({
 }: DirectionShellClientProps) {
   const router = useRouter()
   const { open, setOpen } = useCommandPalette()
-  const navGroups = buildNavGroups(pendingCount)
+  const navGroups = buildNavGroups()
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
