@@ -2,10 +2,10 @@ import Link from "next/link";
 import { BarChart2 } from "lucide-react";
 
 const features = [
-  { n: "01", label: "Sécurisé",  desc: "Données chiffrées"  },
-  { n: "02", label: "Officiel",  desc: "Cadre légal"         },
-  { n: "03", label: "Structuré", desc: "Saisie normalisée"   },
-  { n: "04", label: "Analysé",   desc: "Conjoncture suivie"  },
+  { n: "01", label: "Sécurisé",  desc: "Données chiffrées"   },
+  { n: "02", label: "Officiel",  desc: "Cadre légal"          },
+  { n: "03", label: "Structuré", desc: "Saisie normalisée"    },
+  { n: "04", label: "Analysé",   desc: "Conjoncture suivie"   },
 ];
 
 export default function HomePage() {
@@ -36,7 +36,7 @@ export default function HomePage() {
       {/* ── Hero ── */}
       <div className="relative flex-1 overflow-hidden">
 
-        {/* Dark panel — slide-up, diagonal clip, grid pattern */}
+        {/* Panneau sombre — animation, découpe diagonale, grille */}
         <div
           className="dark-panel absolute inset-0 bg-[#0D1B2E]"
           style={{
@@ -49,40 +49,22 @@ export default function HomePage() {
           }}
         >
 
-          {/* ── COLONNE GAUCHE — titre + sous-titre (sous la diagonale, y ≥ 41 % pour x = 6 %) */}
-          <div className="absolute left-[6%] top-[43%] flex flex-col gap-4">
-            <h1
-              style={{
-                fontSize: "clamp(1.8rem, 3vw, 2.8rem)",
-                fontWeight: 800,
-                lineHeight: 1.07,
-                letterSpacing: "-0.03em",
-              }}
-            >
-              <span className="block text-white">La donnée</span>
-              <span className="block text-white">économique</span>
-              <span className="block text-white">de la Guinée,</span>
-              <span className="block text-[#2563EB]">collectée à la</span>
-              <span className="block text-[#2563EB]">source.</span>
-            </h1>
-            <p className="max-w-[230px] text-[12px] leading-[1.75] text-white/40">
-              Plateforme nationale de collecte des données conjoncturelles auprès des entreprises guinéennes.
-            </p>
+          {/* Bas gauche — sous-titre + features (séparés du titre) */}
+          <div className="absolute bottom-[8%] left-[6%]">
+           
+            <div className="flex gap-8">
+              {features.map(({ n, label, desc }) => (
+                <div key={n}>
+                  <p className="mb-1 text-[10px] font-bold text-[#2563EB]">{n}</p>
+                  <p className="text-sm font-semibold text-white">{label}</p>
+                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-white/35">{desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Features — bas gauche */}
-          <div className="absolute bottom-[7%] left-[6%] flex gap-8">
-            {features.map(({ n, label, desc }) => (
-              <div key={n}>
-                <p className="mb-1 text-[10px] font-bold text-[#2563EB]">{n}</p>
-                <p className="text-sm font-semibold text-white">{label}</p>
-                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-white/35">{desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* ── COLONNE DROITE — carte (haut) + CTAs (bas) */}
-          <div className="absolute bottom-[7%] right-[7%] top-[8%] flex flex-col items-end justify-between">
+          {/* Colonne droite — carte (haut) + CTAs (bas) */}
+          <div className="absolute bottom-[8%] right-[7%] top-[8%] flex flex-col items-end justify-between">
 
             {/* Carte Indice conjoncturel */}
             <div
@@ -113,7 +95,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* CTAs — bas droite */}
+            {/* CTAs */}
             <div className="flex flex-col items-end gap-3">
               <Link
                 href="/inscription"
@@ -130,7 +112,52 @@ export default function HomePage() {
             </div>
 
           </div>
+        </div>
 
+        {/* Titre — version fond blanc (zone supérieure gauche) */}
+        <div
+          className="pointer-events-none absolute inset-0 z-10 overflow-hidden"
+          style={{ clipPath: "polygon(0 0, 54% 0, 0 46%)" }}
+        >
+          <div className="absolute left-[6%] top-[13%]">
+            <h1
+              style={{
+                fontSize: "clamp(2.6rem, 4.5vw, 4.2rem)",
+                fontWeight: 800,
+                lineHeight: 1.02,
+                letterSpacing: "-0.03em",
+              }}
+            >
+              <span className="block text-[#0D1B2E]">La donnée</span>
+              <span className="block text-[#0D1B2E]">économique</span>
+              <span className="block text-[#0D1B2E]">de la Guinée,</span>
+              <span className="block text-[#2563EB]">collectée à la</span>
+              <span className="block text-[#2563EB]">source.</span>
+            </h1>
+          </div>
+        </div>
+
+        {/* Titre — version fond sombre (zone inférieure droite) */}
+        <div
+          className="pointer-events-none absolute inset-0 z-10 overflow-hidden"
+          style={{ clipPath: "polygon(54% 0, 100% 0, 100% 100%, 0 100%, 0 46%)" }}
+        >
+          <div className="absolute left-[6%] top-[13%]">
+            <h1
+              style={{
+                fontSize: "clamp(2.6rem, 4.5vw, 4.2rem)",
+                fontWeight: 800,
+                lineHeight: 1.02,
+                letterSpacing: "-0.03em",
+              }}
+            >
+              <span className="block text-white">La donnée</span>
+              <span className="block text-white">économique</span>
+              <span className="block text-white">de la Guinée,</span>
+              <span className="block text-[#60a5fa]">collectée à la</span>
+              <span className="block text-[#60a5fa]">source.</span>
+            </h1>
+          </div>
         </div>
 
       </div>

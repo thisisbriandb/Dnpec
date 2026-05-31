@@ -1,11 +1,5 @@
-import { ModulePage } from "@/app/components/module-page"
+import { WipPage } from "@/app/direction/_components/wip-page"
 
 export default function ExportsPage() {
-  return (
-    <ModulePage
-      title="Exports"
-      description="Export des données collectées en XLSX, CSV, Stata, R."
-      items={["À implémenter dans la prochaine itération."]}
-    />
-  )
+  return <WipPage title="Exports" />
 }

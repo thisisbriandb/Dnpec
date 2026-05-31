@@ -1,11 +1,5 @@
-import { ModulePage } from "@/app/components/module-page"
+import { WipPage } from "@/app/direction/_components/wip-page"
 
 export default function AnalysesPage() {
-  return (
-    <ModulePage
-      title="Analyses & Indices"
-      description="Calcul et publication des indices conjoncturels DNPEC."
-      items={["À implémenter dans la prochaine itération."]}
-    />
-  )
+  return <WipPage title="Analyses & Indices" />
 }

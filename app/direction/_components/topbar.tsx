@@ -12,6 +12,7 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
@@ -149,11 +150,13 @@ export function Topbar({ profile, unreadCount, onOpenCommandPalette }: TopbarPro
             </Badge>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
-          <DropdownMenuItem className="gap-2 cursor-pointer">
-            <User className="size-3.5" />
-            Profil
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
+            <DropdownMenuItem className="gap-2 cursor-pointer">
+              <User className="size-3.5" />
+              Profil
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <form action={signOut}>
             <DropdownMenuItem
