@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   LayoutDashboard,
@@ -83,6 +84,16 @@ export function DirectionShellClient({
   const router = useRouter()
   const { open, setOpen } = useCommandPalette()
   const navGroups = buildNavGroups()
+
+  // Empêche le scroll du body pendant que le shell direction est monté.
+  // Sans ça, le navigateur affiche deux scrollbars : un sur body et un sur <main>.
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [])
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

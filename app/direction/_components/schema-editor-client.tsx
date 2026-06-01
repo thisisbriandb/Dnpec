@@ -17,11 +17,11 @@ import { saveFormVersionDraft, publishFormVersion } from "@/app/actions/forms"
 import { cn } from "@/lib/utils"
 
 /* ── Types ────────────────────────────────────────────────────── */
-type FormFieldType =
+export type FormFieldType =
   | "short_text" | "long_text" | "integer" | "decimal" | "date"
   | "single_select" | "multi_select" | "checkbox" | "data_table" | "file"
 
-interface FormFieldDef {
+export interface FormFieldDef {
   key: string
   label: string
   type: FormFieldType
@@ -30,13 +30,13 @@ interface FormFieldDef {
   options?: string[]
 }
 
-interface FormSectionDef {
+export interface FormSectionDef {
   key: string
   title: string
   fields: FormFieldDef[]
 }
 
-interface FormSchemaPayload {
+export interface FormSchemaPayload {
   sections: FormSectionDef[]
 }
 

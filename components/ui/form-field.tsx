@@ -229,7 +229,7 @@ function FormSelect<T extends FieldValues>({
           className={className}
         >
           <Select
-            value={field.value as string}
+            value={(field.value as string) ?? ""}
             onValueChange={field.onChange}
           >
             <SelectTrigger
