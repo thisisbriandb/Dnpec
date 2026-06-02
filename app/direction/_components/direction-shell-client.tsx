@@ -34,7 +34,8 @@ function buildNavGroups(): NavGroup[] {
       collapsible: true,
       defaultOpen: true,
       items: [
-        { href: "/direction/entreprises", label: "Répertoire", icon: Building2 },
+        { href: "/direction/entreprises",               label: "Répertoire",    icon: Building2  },
+        { href: "/direction/entreprises/statistiques",  label: "Statistiques",  icon: BarChart3  },
       ],
     },
     {
