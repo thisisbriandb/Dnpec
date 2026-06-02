@@ -94,9 +94,9 @@
   --radius-pill: 9999px;
 
   /* ── Shadows ──────────────────────────────────────────────── */
-  --shadow-subtle: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-medium: 0 4px 16px 0 rgb(0 0 0 / 0.08), 0 1px 4px 0 rgb(0 0 0 / 0.04);
-  --shadow-strong: 0 10px 32px 0 rgb(0 0 0 / 0.12), 0 2px 8px 0 rgb(0 0 0 / 0.06);
+  --shadow-subtle: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-medium: 0 4px 16px 0 rgb(0 0 0 / 0.10), 0 2px 6px 0 rgb(0 0 0 / 0.06);
+  --shadow-strong: 0 10px 32px 0 rgb(0 0 0 / 0.14), 0 4px 10px 0 rgb(0 0 0 / 0.08);
 }
 
 /* ── Light mode values ────────────────────────────────────────── */
@@ -118,8 +118,8 @@
   --accent-foreground: #1B4FCE;
   --destructive: #EF4444;
   --destructive-foreground: #ffffff;
-  --border: #E2E9F3;
-  --input: #E2E9F3;
+  --border: #D1DCF0;
+  --input: #D1DCF0;
   --ring: #2563EB;
   --radius: 0.5rem;
 
@@ -142,9 +142,9 @@
 
   /* surface */
   --surface: #ffffff;
-  --surface-2: #F0F4F9;
-  --surface-3: #E7EDF6;
-  --border-strong: #C8D5E8;
+  --surface-2: #EBF0F8;
+  --surface-3: #DFE8F4;
+  --border-strong: #B8CBE4;
 
   /* text */
   --text-secondary: #2C3E55;

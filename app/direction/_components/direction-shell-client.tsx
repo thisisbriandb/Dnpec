@@ -23,18 +23,24 @@ function buildNavGroups(): NavGroup[] {
   return [
     {
       label: "Vue globale",
+      collapsible: true,
+      defaultOpen: true,
       items: [
         { href: "/direction/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       ],
     },
     {
       label: "Entreprises",
+      collapsible: true,
+      defaultOpen: true,
       items: [
         { href: "/direction/entreprises", label: "Répertoire", icon: Building2 },
       ],
     },
     {
       label: "Collecte",
+      collapsible: true,
+      defaultOpen: true,
       items: [
         { href: "/direction/formulaires", label: "Formulaires", icon: FileText },
         { href: "/direction/campagnes", label: "Campagnes", icon: Megaphone },
@@ -43,6 +49,8 @@ function buildNavGroups(): NavGroup[] {
     },
     {
       label: "Analyses",
+      collapsible: true,
+      defaultOpen: true,
       items: [
         { href: "/direction/analyses", label: "Analyses & Indices", icon: BarChart3 },
         { href: "/direction/exports", label: "Exports", icon: Download },
@@ -50,6 +58,8 @@ function buildNavGroups(): NavGroup[] {
     },
     {
       label: "Administration",
+      collapsible: true,
+      defaultOpen: true,
       items: [
         {
           href: "/direction/audit",
