@@ -20,7 +20,7 @@ export default function HomePage() {
           </div>
           <div className="leading-none">
             <p className="text-base font-bold text-[#0D1B2E]">DNPEC Collecte</p>
-            <p className="mt-0.5 text-[11px] text-[#6272A4]">Ministère du Plan · République de Guinée</p>
+            <p className="mt-0.5 text-[11px] text-[#6272A4]">Ministère de l&apos;économie, des finances et du budget · République de Guinée</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 rounded-full border border-[#E2E9F3] px-4 py-2">

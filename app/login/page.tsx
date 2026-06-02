@@ -32,7 +32,7 @@ export default async function LoginPage({
             </div>
             <div>
               <p className="text-white font-bold text-sm leading-none">DNPEC</p>
-              <p className="text-[#6272A4] text-[11px] mt-0.5">Ministère du Plan · Guinée</p>
+              <p className="text-[#6272A4] text-[11px] mt-0.5">Min. Économie, Finances &amp; Budget · Guinée</p>
             </div>
           </div>
 
@@ -122,7 +122,7 @@ export default async function LoginPage({
           </div>
 
           <p className="mt-5 text-center text-[11px] text-muted-foreground">
-            Ministère du Plan et de la Coopération Internationale
+            Ministère de l&apos;économie, des finances et du budget · République de Guinée
           </p>
         </div>
       </div>

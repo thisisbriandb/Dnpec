@@ -21,7 +21,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "DNPEC — Plateforme de collecte conjoncturelle",
   description:
-    "Plateforme nationale de collecte et d'analyse des données de conjoncture économique — Direction Nationale de la Prévision Économique et de la Conjoncture, Ministère du Plan, République de Guinée.",
+    "Plateforme nationale de collecte et d'analyse des données de conjoncture économique — Direction Nationale des Prévisions Économiques et de la Conjoncture (DNPEC), Ministère de l'économie, des finances et du budget, République de Guinée.",
 }
 
 export default function RootLayout({

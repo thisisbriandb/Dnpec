@@ -262,12 +262,12 @@ export default function DesignSystemPage() {
               <Separator />
               <div className="space-y-1">
                 <p className="text-legend text-muted-foreground">Body · 13.5px · 400</p>
-                <p className="text-body">La Plateforme DNPEC collecte les données conjoncturelles auprès des entreprises guinéennes pour le compte du Ministère du Plan.</p>
+                <p className="text-body">La Plateforme DNPEC collecte les données conjoncturelles auprès des entreprises guinéennes pour le compte du Ministère de l&apos;économie, des finances et du budget.</p>
               </div>
               <Separator />
               <div className="space-y-1">
                 <p className="text-legend text-muted-foreground">Legend · 11px · 400</p>
-                <p className="text-legend">Source : enquête mensuelle de conjoncture · DNPEC · Ministère du Plan</p>
+                <p className="text-legend">Source : enquête mensuelle de conjoncture · DNPEC · Min. Économie, Finances &amp; Budget</p>
               </div>
               <Separator />
               <div className="space-y-1">
