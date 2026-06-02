@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdminClient, createClient } from "@/app/lib/supabase/server";
 
@@ -13,15 +12,34 @@ const rejectSchema = z.object({
 });
 
 const createByDirectionSchema = z.object({
+  // Section 1 — Identité légale
   nif: z.string().min(3, "NIF requis"),
   rccm: z.string().optional(),
   name: z.string().min(2, "Nom requis"),
-  sector_id: z.string().uuid("Secteur requis"),
-  size: z.enum(["tpe", "pme", "grande_entreprise"]),
+  sigle: z.string().optional(),
   legal_status: z.enum(["sa", "sarl", "suarl", "gie", "public", "autre"]),
+  date_creation: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().optional(),
+  ),
+  // Section 2 — Classification
+  sector_id: z.string().uuid("Secteur requis"),
+  activite_nace: z.string().optional(),
+  capital_social: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : Number(v)),
+    z.number().int().min(0).optional(),
+  ),
+  size: z.enum(["tpe", "pme", "grande_entreprise"]),
+  // Section 3 — Localisation
+  region: z.string().optional(),
+  commune: z.string().optional(),
+  address: z.string().optional(),
+  // Section 4 — Contact & Responsable
+  nom_dg: z.string().optional(),
+  responsable_dnpec: z.string().optional(),
   contact_email: z.string().email("Email invalide"),
   phone: z.string().min(6, "Téléphone requis"),
-  address: z.string().optional(),
+  // Champ de compatibilité ascendante
   creation_year: z.preprocess(
     (v) => (v === "" ? undefined : v),
     z.coerce.number().int().min(1800).max(2100).optional(),
@@ -101,7 +119,7 @@ export async function suspendCompany(
 
 export async function createCompanyByDirection(
   formData: FormData,
-): Promise<{ error: string } | void> {
+): Promise<{ error: string } | { company_id: string }> {
   const raw = Object.fromEntries(formData);
   const parsed = createByDirectionSchema.safeParse(raw);
   if (!parsed.success) {
@@ -113,24 +131,43 @@ export async function createCompanyByDirection(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Non authentifié." };
 
+  const d = parsed.data;
+
+  // Extraire l'année depuis date_creation pour rétrocompatibilité
+  const derivedYear = d.date_creation
+    ? new Date(d.date_creation).getFullYear()
+    : (d.creation_year ?? null);
+
   const admin = createAdminClient();
-  const { error } = await admin.from("companies").insert({
-    nif: parsed.data.nif,
-    rccm: parsed.data.rccm || null,
-    name: parsed.data.name,
-    sector_id: parsed.data.sector_id,
-    size: parsed.data.size,
-    legal_status: parsed.data.legal_status,
-    contact_email: parsed.data.contact_email,
-    phone: parsed.data.phone,
-    address: parsed.data.address || null,
-    creation_year: parsed.data.creation_year || null,
-    account_status: "validated",
-    profile_id: null,
-    created_by: user.id,
-    validated_by: user.id,
-    validated_at: new Date().toISOString(),
-  });
+  const { data, error } = await admin
+    .from("companies")
+    .insert({
+      nif: d.nif,
+      rccm: d.rccm || null,
+      name: d.name,
+      sigle: d.sigle || null,
+      legal_status: d.legal_status,
+      date_creation: d.date_creation || null,
+      sector_id: d.sector_id,
+      activite_nace: d.activite_nace || null,
+      capital_social: d.capital_social ?? null,
+      size: d.size,
+      region: d.region || null,
+      commune: d.commune || null,
+      address: d.address || null,
+      nom_dg: d.nom_dg || null,
+      responsable_dnpec: d.responsable_dnpec || null,
+      contact_email: d.contact_email,
+      phone: d.phone,
+      creation_year: derivedYear,
+      account_status: "validated",
+      profile_id: null,
+      created_by: user.id,
+      validated_by: user.id,
+      validated_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
 
   if (error) {
     if (error.code === "23505") {
@@ -140,5 +177,66 @@ export async function createCompanyByDirection(
   }
 
   revalidatePath("/direction/entreprises");
-  redirect("/direction/entreprises");
+  return { company_id: data.id };
+}
+
+const DOC_TYPES = ["rccm", "attestation_nif", "bilan_comptable"] as const;
+type DocType = (typeof DOC_TYPES)[number];
+
+export async function uploadCompanyDocument(
+  companyId: string,
+  docType: DocType,
+  formData: FormData,
+): Promise<{ path: string } | { error: string }> {
+  // Valider les paramètres
+  const idCheck = uuidSchema.safeParse(companyId);
+  if (!idCheck.success) return { error: "Identifiant entreprise invalide." };
+  if (!DOC_TYPES.includes(docType)) return { error: "Type de document invalide." };
+
+  // Vérifier l'authentification et le rôle
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Non authentifié." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || !["super_admin", "analyste", "agent_saisie"].includes(profile.role)) {
+    return { error: "Accès refusé : rôle insuffisant." };
+  }
+
+  // Récupérer le fichier
+  const file = formData.get("file");
+  if (!file || !(file instanceof File)) return { error: "Fichier manquant." };
+  if (file.size === 0) return { error: "Le fichier est vide." };
+  if (file.size > 10 * 1024 * 1024) return { error: "Fichier trop volumineux (max 10 Mo)." };
+
+  const ext = file.name.split(".").pop() ?? "bin";
+  const storagePath = `${companyId}/${docType}/${Date.now()}.${ext}`;
+
+  const admin = createAdminClient();
+
+  const { error: uploadError } = await admin.storage
+    .from("company-docs")
+    .upload(storagePath, file, { upsert: true });
+
+  if (uploadError) return { error: uploadError.message };
+
+  const { error: dbError } = await admin.from("company_documents").insert({
+    company_id: companyId,
+    doc_type: docType,
+    storage_path: storagePath,
+    uploaded_by: user.id,
+  });
+
+  if (dbError) {
+    // Supprimer l'objet storage si l'insertion DB échoue
+    await admin.storage.from("company-docs").remove([storagePath]);
+    return { error: dbError.message };
+  }
+
+  return { path: storagePath };
 }

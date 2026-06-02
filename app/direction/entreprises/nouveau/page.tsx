@@ -8,7 +8,7 @@ export default async function NouvelleEntreprisePage() {
 
   const { data: sectors } = await supabase
     .from("sectors")
-    .select("id, name")
+    .select("id, name, code")
     .eq("is_active", true)
     .order("name")
 
