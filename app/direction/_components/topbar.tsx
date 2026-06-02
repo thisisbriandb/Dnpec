@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, Search, LogOut, User } from "lucide-react"
+import { Bell, Search, LogOut, User, Sun, Moon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/tooltip"
 import { ROLE_LABELS, type AppRole } from "@/lib/status"
 import { signOut } from "@/app/actions/auth"
+import { useTheme } from "@/lib/theme"
 
 const BREADCRUMB_MAP: Record<string, string> = {
   "/direction/dashboard":                    "Tableau de bord",
@@ -69,6 +70,7 @@ interface TopbarProps {
 export function Topbar({ profile, unreadCount, onOpenCommandPalette }: TopbarProps) {
   const pathname = usePathname()
   const crumbs = getBreadcrumbs(pathname)
+  const { appTheme, toggleAppTheme } = useTheme()
   const initials = profile.full_name
     .split(" ")
     .slice(0, 2)
@@ -107,6 +109,23 @@ export function Topbar({ profile, unreadCount, onOpenCommandPalette }: TopbarPro
         <span>Rechercher</span>
         <kbd className="ml-1 rounded border border-border bg-muted px-1 text-[10px] font-mono">⌘K</kbd>
       </button>
+
+      {/* App theme toggle */}
+      <Tooltip>
+        <TooltipTrigger
+          className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+          onClick={toggleAppTheme}
+        >
+          {appTheme === "dark" ? (
+            <Sun className="size-4" />
+          ) : (
+            <Moon className="size-4" />
+          )}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {appTheme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+        </TooltipContent>
+      </Tooltip>
 
       {/* Bell */}
       <Tooltip>

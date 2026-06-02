@@ -8,6 +8,8 @@ import {
   PanelLeft,
   Lock,
   ChevronRight,
+  Sun,
+  Moon,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -18,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { AppRole } from "@/lib/status"
+import { useTheme } from "@/lib/theme"
 
 /* ── Types ────────────────────────────────────────────────────── */
 interface NavItem {
@@ -161,6 +164,9 @@ function Sidebar({
             ))}
           </nav>
 
+          {/* Sidebar theme toggle */}
+          <SidebarThemeToggle collapsed={collapsed} />
+
           {/* Footer */}
           {footer && (
             <div className={cn("border-t border-sidebar-border py-2", "px-1.5")}>
@@ -171,6 +177,53 @@ function Sidebar({
       </TooltipProvider>
     </SidebarContext.Provider>
   )
+}
+
+/* ── Sidebar Theme Toggle ─────────────────────────────────────── */
+function SidebarThemeToggle({ collapsed }: { collapsed: boolean }) {
+  const { sidebarTheme, toggleSidebarTheme } = useTheme()
+  const isLight = sidebarTheme === "light"
+
+  const button = (
+    <button
+      type="button"
+      onClick={toggleSidebarTheme}
+      aria-label={isLight ? "Passer la sidebar en mode sombre" : "Passer la sidebar en mode clair"}
+      className={cn(
+        "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-1.5 text-sm",
+        "border-t border-sidebar-border",
+        "text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-white/6",
+        "transition-all duration-150 focus-visible:outline-2 focus-visible:outline-sidebar-ring",
+        collapsed ? "justify-center" : ""
+      )}
+    >
+      {isLight ? (
+        <Moon className="shrink-0 size-4 text-sidebar-foreground/50" strokeWidth={1.75} />
+      ) : (
+        <Sun className="shrink-0 size-4 text-sidebar-foreground/50" strokeWidth={1.75} />
+      )}
+      {!collapsed && (
+        <span className="text-[12px]">
+          {isLight ? "Mode sombre" : "Mode clair"}
+        </span>
+      )}
+    </button>
+  )
+
+  if (collapsed) {
+    return (
+      <div className="px-2 pb-1">
+        <Tooltip>
+          <TooltipTrigger className="block w-full">{button}</TooltipTrigger>
+          <TooltipContent side="right">
+            {isLight ? "Sidebar sombre" : "Sidebar claire"}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    )
+  }
+
+  return <div className="px-2 pb-1">{button}</div>
 }
 
 /* ── Nav Group Section ────────────────────────────────────────── */

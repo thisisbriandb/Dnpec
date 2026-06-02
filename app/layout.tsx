@@ -4,6 +4,16 @@ import "./globals.css"
 import { cn } from "@/lib/utils"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/toaster"
+import { ThemeProvider } from "@/lib/theme"
+
+const THEME_INIT_SCRIPT = `
+try {
+  var at = localStorage.getItem('dnpec-app-theme');
+  var st = localStorage.getItem('dnpec-sidebar-theme');
+  if (at === 'dark') document.documentElement.classList.add('dark');
+  if (st === 'light') document.documentElement.setAttribute('data-sidebar-theme', 'light');
+} catch(e) {}
+`.trim()
 
 const inter = Inter({
   subsets: ["latin"],
@@ -35,11 +45,17 @@ export default function RootLayout({
       className={cn("h-full", inter.variable, jetbrainsMono.variable)}
       suppressHydrationWarning
     >
+      <head>
+        {/* Anti-flash init : applique les thèmes avant le premier rendu */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full bg-background text-foreground antialiased">
-        <TooltipProvider delay={400}>
-          {children}
-          <Toaster />
-        </TooltipProvider>
+        <ThemeProvider>
+          <TooltipProvider delay={400}>
+            {children}
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
