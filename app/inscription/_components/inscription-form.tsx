@@ -551,7 +551,7 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
           </div>
 
           <p className="mt-6 text-center text-[11px] text-muted-foreground">
-            Ministère du Plan et de la Coopération Internationale · République de Guinée
+            Ministère de l&apos;économie, des finances et du budget · République de Guinée
           </p>
         </div>
       </main>

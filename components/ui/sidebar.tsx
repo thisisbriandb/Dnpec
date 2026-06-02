@@ -266,7 +266,7 @@ function SidebarHeaderDNPEC() {
       </div>
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-sidebar-accent-foreground">DNPEC</p>
-        <p className="truncate text-[10px] text-sidebar-foreground/50">Minist. du Plan</p>
+        <p className="truncate text-[10px] text-sidebar-foreground/50">Éco. Finances &amp; Budget</p>
       </div>
     </div>
   )
