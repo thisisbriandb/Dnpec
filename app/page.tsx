@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BarChart2 } from "lucide-react";
+import { createClient } from "@/app/lib/supabase/server";
 
 const features = [
   { n: "01", label: "Sécurisé",  desc: "Données chiffrées"   },
@@ -8,7 +9,24 @@ const features = [
   { n: "04", label: "Analysé",   desc: "Conjoncture suivie"   },
 ];
 
-export default function HomePage() {
+const DIRECTION_ROLES = ["super_admin", "analyste", "agent_saisie"];
+
+export default async function HomePage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let espaceHref: string | null = null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    const role = profile?.role ?? "entreprise";
+    espaceHref = DIRECTION_ROLES.includes(role) ? "/direction/dashboard" : "/dashboard";
+  }
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-white">
 
@@ -97,18 +115,29 @@ export default function HomePage() {
 
             {/* CTAs */}
             <div className="flex flex-col items-end gap-3">
-              <Link
-                href="/inscription"
-                className="flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] active:scale-95"
-              >
-                Enregistrer mon entreprise →
-              </Link>
-              <Link
-                href="/login"
-                className="flex items-center rounded-lg border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
-              >
-                Me connecter
-              </Link>
+              {espaceHref ? (
+                <Link
+                  href={espaceHref}
+                  className="flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] active:scale-95"
+                >
+                  Mon espace →
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/inscription"
+                    className="flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] active:scale-95"
+                  >
+                    Enregistrer mon entreprise →
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="flex items-center rounded-lg border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
+                  >
+                    Me connecter
+                  </Link>
+                </>
+              )}
             </div>
 
           </div>

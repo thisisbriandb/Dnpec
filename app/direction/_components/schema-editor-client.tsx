@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Plus, Trash2, AlertTriangle, Save, Upload, ChevronDown, ChevronRight } from "lucide-react"
+import { Plus, Trash2, Lock, Save, Upload, ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { saveFormVersionDraft, publishFormVersion } from "@/app/actions/forms"
+import { saveFormSchema, publishFormSchema, createFormTemplate } from "@/app/actions/forms"
 import { cn } from "@/lib/utils"
 
 /* ── Types ────────────────────────────────────────────────────── */
@@ -42,19 +42,19 @@ export interface FormSchemaPayload {
 
 /* ── Constants ────────────────────────────────────────────────── */
 const FIELD_TYPE_OPTIONS: { value: FormFieldType; label: string }[] = [
-  { value: "short_text",    label: "Texte court" },
-  { value: "long_text",     label: "Texte long" },
-  { value: "integer",       label: "Nombre entier" },
-  { value: "decimal",       label: "Nombre décimal" },
-  { value: "date",          label: "Date" },
-  { value: "single_select", label: "Sélection unique" },
+  { value: "short_text",    label: "Texte court"        },
+  { value: "long_text",     label: "Texte long"         },
+  { value: "integer",       label: "Nombre entier"      },
+  { value: "decimal",       label: "Nombre décimal"     },
+  { value: "date",          label: "Date"               },
+  { value: "single_select", label: "Sélection unique"   },
   { value: "multi_select",  label: "Sélection multiple" },
-  { value: "checkbox",      label: "Case à cocher" },
+  { value: "checkbox",      label: "Case à cocher"      },
   { value: "data_table",    label: "Tableau de données" },
-  { value: "file",          label: "Fichier" },
+  { value: "file",          label: "Fichier"            },
 ]
 
-const HAS_UNIT = new Set(["integer", "decimal"])
+const HAS_UNIT    = new Set(["integer", "decimal"])
 const HAS_OPTIONS = new Set(["single_select", "multi_select"])
 
 function slugify(label: string): string {
@@ -77,44 +77,44 @@ function newSection(): FormSectionDef {
 
 /* ── Props ────────────────────────────────────────────────────── */
 interface Props {
-  templateId: string
+  templateId:    string | null   // null = création d'un nouveau formulaire
+  sectorId?:     string          // requis quand templateId est null
   templateTitle: string
-  sectorName: string
-  existingDraft: { id: string; schema: FormSchemaPayload } | null
-  hasCurrentVersion: boolean
-  seedSchema: FormSchemaPayload | null
+  sectorName:    string
+  schema:        FormSchemaPayload
+  isLocked:      boolean
+  isPublished:   boolean
 }
 
 export function SchemaEditorClient({
-  templateId,
+  templateId: initialTemplateId,
+  sectorId,
   templateTitle,
   sectorName,
-  existingDraft,
-  hasCurrentVersion,
-  seedSchema,
+  schema,
+  isLocked,
+  isPublished,
 }: Props) {
   const router = useRouter()
-  const initialSections =
-    existingDraft?.schema?.sections ?? seedSchema?.sections ?? []
-
-  const [sections, setSections] = React.useState<FormSectionDef[]>(initialSections)
-  const [expandedSections, setExpandedSections] = React.useState<Set<number>>(
-    new Set(sections.map((_, i) => i)),
+  const [sections, setSections]         = React.useState<FormSectionDef[]>(schema.sections)
+  const [expandedSections, setExpanded] = React.useState<Set<number>>(
+    new Set(schema.sections.map((_, i) => i)),
   )
-  const [draftId, setDraftId] = React.useState<string | null>(existingDraft?.id ?? null)
-  const [saving, setSaving] = React.useState(false)
-  const [publishOpen, setPublishOpen] = React.useState(false)
+  const [saving, setSaving]             = React.useState(false)
+  const [publishOpen, setPublishOpen]   = React.useState(false)
+  // templateId peut démarrer null (création) et être défini après le premier save
+  const [templateId, setTemplateId]     = React.useState<string | null>(initialTemplateId)
 
-  /* ── Section helpers ────────────────────────────────────────── */
+  /* ── Section helpers ──────────────────────────────────────────── */
   function addSection() {
     const s = newSection()
     setSections((prev) => [...prev, s])
-    setExpandedSections((prev) => new Set([...prev, sections.length]))
+    setExpanded((prev) => new Set([...prev, sections.length]))
   }
 
   function removeSection(idx: number) {
     setSections((prev) => prev.filter((_, i) => i !== idx))
-    setExpandedSections((prev) => {
+    setExpanded((prev) => {
       const next = new Set<number>()
       prev.forEach((i) => { if (i < idx) next.add(i); else if (i > idx) next.add(i - 1) })
       return next
@@ -122,10 +122,9 @@ export function SchemaEditorClient({
   }
 
   function toggleSection(idx: number) {
-    setExpandedSections((prev) => {
+    setExpanded((prev) => {
       const next = new Set(prev)
-      if (next.has(idx)) next.delete(idx)
-      else next.add(idx)
+      if (next.has(idx)) next.delete(idx); else next.add(idx)
       return next
     })
   }
@@ -138,38 +137,36 @@ export function SchemaEditorClient({
     )
   }
 
-  /* ── Field helpers ──────────────────────────────────────────── */
-  function addField(sectionIdx: number) {
+  /* ── Field helpers ────────────────────────────────────────────── */
+  function addField(si: number) {
     setSections((prev) =>
-      prev.map((s, i) => (i === sectionIdx ? { ...s, fields: [...s.fields, newField()] } : s)),
+      prev.map((s, i) => (i === si ? { ...s, fields: [...s.fields, newField()] } : s)),
     )
   }
 
-  function removeField(sectionIdx: number, fieldIdx: number) {
+  function removeField(si: number, fi: number) {
     setSections((prev) =>
       prev.map((s, i) =>
-        i === sectionIdx
-          ? { ...s, fields: s.fields.filter((_, fi) => fi !== fieldIdx) }
-          : s,
+        i === si ? { ...s, fields: s.fields.filter((_, k) => k !== fi) } : s,
       ),
     )
   }
 
-  function updateField(sectionIdx: number, fieldIdx: number, patch: Partial<FormFieldDef>) {
+  function updateField(si: number, fi: number, patch: Partial<FormFieldDef>) {
     setSections((prev) =>
       prev.map((s, i) =>
-        i === sectionIdx
+        i === si
           ? {
               ...s,
-              fields: s.fields.map((f, fi) =>
-                fi === fieldIdx
+              fields: s.fields.map((f, k) =>
+                k === fi
                   ? {
                       ...f,
                       ...patch,
                       key:
                         patch.label !== undefined && f.key === slugify(f.label)
                           ? slugify(patch.label)
-                          : patch.key ?? f.key,
+                          : (patch.key ?? f.key),
                     }
                   : f,
               ),
@@ -179,41 +176,44 @@ export function SchemaEditorClient({
     )
   }
 
-  /* ── Save / Publish ─────────────────────────────────────────── */
+  /* ── Save / Publish ───────────────────────────────────────────── */
+  async function resolveTemplateId(): Promise<string | null> {
+    if (templateId) return templateId
+    if (!sectorId) return null
+    const result = await createFormTemplate(sectorId, { sections })
+    if ("error" in result) { toast.error(result.error); return null }
+    setTemplateId(result.templateId)
+    router.replace(`/direction/formulaires/${result.templateId}/modifier`)
+    return result.templateId
+  }
+
   async function handleSave() {
     setSaving(true)
-    const schema: FormSchemaPayload = { sections }
-    const result = await saveFormVersionDraft(templateId, draftId, schema)
+    const tid = await resolveTemplateId()
+    if (!tid) { setSaving(false); return }
+    if (tid !== templateId) { setSaving(false); return } // déjà redirigé après création
+    const result = await saveFormSchema(tid, { sections })
     setSaving(false)
-    if ("error" in result) {
-      toast.error(result.error)
-    } else {
-      setDraftId(result.versionId)
-      toast.success("Brouillon enregistré.")
-    }
+    if ("error" in result) toast.error(result.error)
+    else toast.success("Formulaire enregistré.")
   }
 
   async function handlePublish() {
     setSaving(true)
-    let vid = draftId
-    if (!vid) {
-      const saveResult = await saveFormVersionDraft(templateId, null, { sections })
-      if ("error" in saveResult) { toast.error(saveResult.error); setSaving(false); return }
-      vid = saveResult.versionId
-      setDraftId(vid)
-    }
-    const result = await publishFormVersion(templateId, vid)
+    const tid = await resolveTemplateId()
+    if (!tid) { setSaving(false); return }
+    const result = await publishFormSchema(tid, { sections })
     setSaving(false)
     if ("error" in result) {
       toast.error(result.error)
     } else {
-      toast.success("Version publiée avec succès.")
-      router.push(`/direction/formulaires/${templateId}`)
+      toast.success("Formulaire publié avec succès.")
+      router.push(`/direction/formulaires`)
     }
     setPublishOpen(false)
   }
 
-  /* ── Render ─────────────────────────────────────────────────── */
+  /* ── Render ───────────────────────────────────────────────────── */
   return (
     <div className="flex h-full flex-col">
       {/* Top bar */}
@@ -222,26 +222,37 @@ export function SchemaEditorClient({
           <p className="text-xs text-muted-foreground">{sectorName}</p>
           <h1 className="text-sm font-semibold text-foreground truncate">{templateTitle}</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleSave} disabled={saving}>
-            <Save className="size-3.5" />
-            {saving ? "Enregistrement…" : "Enregistrer brouillon"}
-          </Button>
-          <Button size="sm" onClick={() => setPublishOpen(true)} disabled={saving}>
-            <Upload className="size-3.5" />
-            Publier
-          </Button>
-        </div>
+        {isLocked ? (
+          <div className="flex items-center gap-2 text-sm text-status-warn-text bg-status-warn-bg border border-status-warn/30 rounded-md px-3 py-1.5">
+            <Lock className="size-3.5 shrink-0" />
+            Formulaire verrouillé — campagne active
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleSave} disabled={saving}>
+              <Save className="size-3.5" />
+              {saving ? "Enregistrement…" : "Enregistrer"}
+            </Button>
+            <Button size="sm" onClick={() => setPublishOpen(true)} disabled={saving}>
+              <Upload className="size-3.5" />
+              Publier
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* 2-panel body */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Editor */}
+        {/* Left : Editor */}
         <div className="flex-1 overflow-y-auto border-r border-border p-4 space-y-3">
-          {hasCurrentVersion && (
+
+          {isLocked && (
             <div className="flex items-start gap-2 rounded-md border border-status-warn/30 bg-status-warn-bg px-3 py-2.5 text-sm text-status-warn-text">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              <span>La publication <strong>archivera</strong> la version actuellement publiée.</span>
+              <Lock className="mt-0.5 size-4 shrink-0" />
+              <span>
+                Ce formulaire est utilisé par une ou plusieurs campagnes actives.
+                Attendez leur clôture pour le modifier.
+              </span>
             </div>
           )}
 
@@ -253,29 +264,32 @@ export function SchemaEditorClient({
                   type="button"
                   onClick={() => toggleSection(si)}
                   className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
+                  disabled={isLocked}
                 >
-                  {expandedSections.has(si) ? (
-                    <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-                  )}
+                  {expandedSections.has(si)
+                    ? <ChevronDown  className="size-3.5 shrink-0 text-muted-foreground" />
+                    : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                  }
                   <input
                     type="text"
                     value={section.title}
                     onChange={(e) => updateSectionTitle(si, e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     placeholder="Titre de la section"
-                    className="flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground/60"
+                    disabled={isLocked}
+                    className="flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground/60 disabled:opacity-50"
                   />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => removeSection(si)}
-                  className="shrink-0 rounded p-1 text-muted-foreground hover:bg-status-bad-bg hover:text-status-bad-text transition-colors"
-                  aria-label="Supprimer la section"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
+                {!isLocked && (
+                  <button
+                    type="button"
+                    onClick={() => removeSection(si)}
+                    className="shrink-0 rounded p-1 text-muted-foreground hover:bg-status-bad-bg hover:text-status-bad-text transition-colors"
+                    aria-label="Supprimer la section"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
               </div>
 
               {/* Fields */}
@@ -284,70 +298,59 @@ export function SchemaEditorClient({
                   {section.fields.map((field, fi) => (
                     <div key={fi} className="rounded-md border border-border bg-background p-3">
                       <div className="grid grid-cols-2 gap-2">
-                        {/* Label */}
                         <div>
-                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                            Libellé *
-                          </label>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Libellé *</label>
                           <input
                             type="text"
                             value={field.label}
                             onChange={(e) => updateField(si, fi, { label: e.target.value })}
                             placeholder="Ex. Production mensuelle"
-                            className="mt-0.5 w-full h-7 rounded-control border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 placeholder:text-muted-foreground"
+                            disabled={isLocked}
+                            className="mt-0.5 w-full h-7 rounded-control border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 placeholder:text-muted-foreground disabled:opacity-50"
                           />
                         </div>
-                        {/* Type */}
                         <div>
-                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                            Type
-                          </label>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Type</label>
                           <select
                             value={field.type}
                             onChange={(e) => updateField(si, fi, { type: e.target.value as FormFieldType })}
-                            className="mt-0.5 w-full h-7 rounded-control border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                            disabled={isLocked}
+                            className="mt-0.5 w-full h-7 rounded-control border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:opacity-50"
                           >
                             {FIELD_TYPE_OPTIONS.map((opt) => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
                           </select>
                         </div>
-                        {/* Key */}
                         <div>
-                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                            Clé (auto)
-                          </label>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Clé (auto)</label>
                           <input
                             type="text"
                             value={field.key}
                             onChange={(e) => updateField(si, fi, { key: e.target.value })}
                             placeholder="clé_auto"
-                            className="mt-0.5 w-full h-7 rounded-control border border-input bg-background px-2 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 placeholder:text-muted-foreground"
+                            disabled={isLocked}
+                            className="mt-0.5 w-full h-7 rounded-control border border-input bg-background px-2 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 placeholder:text-muted-foreground disabled:opacity-50"
                           />
                         </div>
-                        {/* Unit (if applicable) */}
                         {HAS_UNIT.has(field.type) && (
                           <div>
-                            <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                              Unité
-                            </label>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Unité</label>
                             <input
                               type="text"
                               value={field.unit ?? ""}
                               onChange={(e) => updateField(si, fi, { unit: e.target.value })}
                               placeholder="Ex. tonnes, GNF"
-                              className="mt-0.5 w-full h-7 rounded-control border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 placeholder:text-muted-foreground"
+                              disabled={isLocked}
+                              className="mt-0.5 w-full h-7 rounded-control border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 placeholder:text-muted-foreground disabled:opacity-50"
                             />
                           </div>
                         )}
                       </div>
 
-                      {/* Options (si select) */}
                       {HAS_OPTIONS.has(field.type) && (
                         <div className="mt-2">
-                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                            Options (une par ligne)
-                          </label>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Options (une par ligne)</label>
                           <textarea
                             value={(field.options ?? []).join("\n")}
                             onChange={(e) =>
@@ -356,62 +359,67 @@ export function SchemaEditorClient({
                               })
                             }
                             rows={3}
-                            className="mt-0.5 w-full rounded-control border border-input bg-background px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 resize-none"
+                            disabled={isLocked}
+                            className="mt-0.5 w-full rounded-control border border-input bg-background px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 resize-none disabled:opacity-50"
                           />
                         </div>
                       )}
 
-                      {/* Bottom row */}
                       <div className="mt-2 flex items-center justify-between">
                         <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
                           <input
                             type="checkbox"
                             checked={field.required}
                             onChange={(e) => updateField(si, fi, { required: e.target.checked })}
+                            disabled={isLocked}
                             className="rounded"
                           />
                           Requis
                         </label>
-                        <button
-                          type="button"
-                          onClick={() => removeField(si, fi)}
-                          className="rounded p-1 text-muted-foreground hover:bg-status-bad-bg hover:text-status-bad-text transition-colors"
-                          aria-label="Supprimer le champ"
-                        >
-                          <Trash2 className="size-3" />
-                        </button>
+                        {!isLocked && (
+                          <button
+                            type="button"
+                            onClick={() => removeField(si, fi)}
+                            className="rounded p-1 text-muted-foreground hover:bg-status-bad-bg hover:text-status-bad-text transition-colors"
+                            aria-label="Supprimer le champ"
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
 
-                  <button
-                    type="button"
-                    onClick={() => addField(si)}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                  >
-                    <Plus className="size-3" />
-                    Ajouter un champ
-                  </button>
+                  {!isLocked && (
+                    <button
+                      type="button"
+                      onClick={() => addField(si)}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                    >
+                      <Plus className="size-3" />
+                      Ajouter un champ
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           ))}
 
-          <button
-            type="button"
-            onClick={addSection}
-            className="flex w-full items-center justify-center gap-1.5 rounded-card border border-dashed border-border py-3 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-          >
-            <Plus className="size-4" />
-            Ajouter une section
-          </button>
+          {!isLocked && (
+            <button
+              type="button"
+              onClick={addSection}
+              className="flex w-full items-center justify-center gap-1.5 rounded-card border border-dashed border-border py-3 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+            >
+              <Plus className="size-4" />
+              Ajouter une section
+            </button>
+          )}
         </div>
 
-        {/* Right: Preview */}
+        {/* Right : Preview */}
         <div className="w-80 overflow-y-auto bg-surface-2 p-4 space-y-4 hidden lg:block">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-            Aperçu
-          </p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Aperçu</p>
           {sections.length === 0 && (
             <p className="text-sm text-muted-foreground">Aucune section pour le moment.</p>
           )}
@@ -430,19 +438,17 @@ export function SchemaEditorClient({
       <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Publier cette version ?</DialogTitle>
+            <DialogTitle>Publier ce formulaire ?</DialogTitle>
             <DialogDescription>
-              {hasCurrentVersion
-                ? "La version actuellement publiée sera archivée. Cette action est irréversible."
-                : "La version sera marquée comme publiée et disponible pour les campagnes."}
+              {isPublished
+                ? "Le schéma sera mis à jour et disponible pour les prochaines campagnes."
+                : "Le formulaire sera marqué comme publié et disponible pour les campagnes."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPublishOpen(false)}>
-              Annuler
-            </Button>
+            <Button variant="outline" onClick={() => setPublishOpen(false)}>Annuler</Button>
             <Button onClick={handlePublish} disabled={saving}>
-              {saving ? "Publication…" : "Confirmer la publication"}
+              {saving ? "Publication…" : "Confirmer"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -451,10 +457,10 @@ export function SchemaEditorClient({
   )
 }
 
-/* ── Field preview component ──────────────────────────────────── */
+/* ── Field preview ────────────────────────────────────────────── */
 function FieldPreview({ field }: { field: FormFieldDef }) {
   const label = field.label || "Champ sans titre"
-  const unit = field.unit ? ` (${field.unit})` : ""
+  const unit  = field.unit ? ` (${field.unit})` : ""
 
   return (
     <div className="space-y-0.5">
@@ -463,35 +469,20 @@ function FieldPreview({ field }: { field: FormFieldDef }) {
         {field.required && <span className="ml-0.5 text-status-bad">*</span>}
       </label>
       {field.type === "long_text" ? (
-        <textarea
-          disabled
-          rows={2}
-          className="w-full rounded-control border border-input bg-background px-2 py-1 text-xs text-muted-foreground resize-none opacity-60"
-        />
+        <textarea disabled rows={2} className="w-full rounded-control border border-input bg-background px-2 py-1 text-xs text-muted-foreground resize-none opacity-60" />
       ) : field.type === "single_select" || field.type === "multi_select" ? (
-        <select
-          disabled
-          className="w-full h-7 rounded-control border border-input bg-background px-2 text-xs opacity-60"
-        >
+        <select disabled className="w-full h-7 rounded-control border border-input bg-background px-2 text-xs opacity-60">
           <option>Sélectionner…</option>
-          {(field.options ?? []).map((opt) => (
-            <option key={opt}>{opt}</option>
-          ))}
+          {(field.options ?? []).map((opt) => <option key={opt}>{opt}</option>)}
         </select>
       ) : field.type === "checkbox" ? (
         <label className={cn("flex items-center gap-1.5 text-xs opacity-60 cursor-not-allowed")}>
           <input type="checkbox" disabled /> {label}
         </label>
       ) : field.type === "file" ? (
-        <div className="flex h-7 items-center rounded-control border border-dashed border-input px-2 text-xs text-muted-foreground opacity-60">
-          Choisir un fichier…
-        </div>
+        <div className="flex h-7 items-center rounded-control border border-dashed border-input px-2 text-xs text-muted-foreground opacity-60">Choisir un fichier…</div>
       ) : field.type === "date" ? (
-        <input
-          type="date"
-          disabled
-          className="w-full h-7 rounded-control border border-input bg-background px-2 text-xs opacity-60"
-        />
+        <input type="date" disabled className="w-full h-7 rounded-control border border-input bg-background px-2 text-xs opacity-60" />
       ) : (
         <input
           type={field.type === "integer" || field.type === "decimal" ? "number" : "text"}
