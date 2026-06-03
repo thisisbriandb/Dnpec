@@ -1,8 +1,6 @@
 import type { Metadata } from "next"
-import { Inter, JetBrains_Mono } from "next/font/google"
 import Script from "next/script"
 import "./globals.css"
-import { cn } from "@/lib/utils"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/lib/theme"
@@ -15,19 +13,6 @@ try {
   if (st === 'light') document.documentElement.setAttribute('data-sidebar-theme', 'light');
 } catch(e) {}
 `.trim()
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-})
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
-  display: "swap",
-  weight: ["400", "500", "600"],
-})
 
 export const metadata: Metadata = {
   title: "DNPEC — Plateforme de collecte conjoncturelle",
@@ -43,7 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={cn("h-full", inter.variable, jetbrainsMono.variable)}
+      className="h-full"
       suppressHydrationWarning
     >
       <head>

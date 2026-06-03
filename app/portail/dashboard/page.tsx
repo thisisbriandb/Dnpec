@@ -64,7 +64,7 @@ export default async function PortailDashboardPage() {
     .trim()
     .split(/\s+/)
     .slice(0, 2)
-    .map((w) => w[0])
+    .map((w: string) => w[0])
     .join("")
     .toUpperCase()
 

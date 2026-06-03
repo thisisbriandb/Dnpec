@@ -61,7 +61,7 @@ export default async function PortailProfilPage() {
     .trim()
     .split(/\s+/)
     .slice(0, 2)
-    .map((w) => w[0])
+    .map((w: string) => w[0])
     .join("")
     .toUpperCase()
 

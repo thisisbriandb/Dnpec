@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -12,9 +14,11 @@
 
 @theme inline {
   /* ── Fonts ────────────────────────────────────────────────── */
-  --font-sans: var(--font-inter, "Inter", system-ui, -apple-system, sans-serif);
-  --font-mono: var(--font-jetbrains-mono, "JetBrains Mono", "Fira Code", monospace);
-  --font-heading: var(--font-inter, "Inter", system-ui, sans-serif);
+  --font-inter: "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
+  --font-jetbrains-mono: "JetBrains Mono Variable", "JetBrains Mono", "Fira Code", monospace;
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-heading: var(--font-inter);
 
   /* ── Base color tokens → shadcn variables ─────────────────── */
   --color-background: var(--background);
