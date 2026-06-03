@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAdminClient, createClient } from "@/app/lib/supabase/server";
+import { createNotification } from "./notifications";
+import { NOTIF } from "@/lib/notif-types";
 
 const uuidSchema = z.string().uuid();
 
@@ -67,6 +69,24 @@ export async function validateCompany(
 
   if (error) return { error: error.message };
 
+  // Notifier l'entreprise
+  const admin = createAdminClient();
+  const { data: company } = await admin
+    .from("companies")
+    .select("profile_id, name")
+    .eq("id", id)
+    .single();
+
+  if (company?.profile_id) {
+    await createNotification({
+      recipientId: company.profile_id,
+      companyId:   id,
+      type:  NOTIF.INSCRIPTION_VALIDEE,
+      title: "Inscription validée",
+      body:  `Votre inscription pour "${company.name}" a été validée par la DNPEC. Vous pouvez maintenant accéder à votre espace entreprise.`,
+    });
+  }
+
   revalidatePath("/direction/entreprises/inscriptions");
   revalidatePath("/direction/entreprises");
   return { success: true };
@@ -92,6 +112,24 @@ export async function rejectCompany(
 
   if (error) return { error: error.message };
 
+  // Notifier l'entreprise
+  const admin = createAdminClient();
+  const { data: company } = await admin
+    .from("companies")
+    .select("profile_id, name")
+    .eq("id", company_id)
+    .single();
+
+  if (company?.profile_id) {
+    await createNotification({
+      recipientId: company.profile_id,
+      companyId:   company_id,
+      type:  NOTIF.INSCRIPTION_REJETEE,
+      title: "Inscription rejetée",
+      body:  `Votre inscription pour "${company.name}" a été rejetée. Motif : ${rejection_reason}`,
+    });
+  }
+
   revalidatePath("/direction/entreprises/inscriptions");
   revalidatePath("/direction/entreprises");
   return { success: true };
@@ -111,6 +149,24 @@ export async function suspendCompany(
     .eq("id", id);
 
   if (error) return { error: error.message };
+
+  // Notifier l'entreprise
+  const admin = createAdminClient();
+  const { data: company } = await admin
+    .from("companies")
+    .select("profile_id, name")
+    .eq("id", id)
+    .single();
+
+  if (company?.profile_id) {
+    await createNotification({
+      recipientId: company.profile_id,
+      companyId:   id,
+      type:  NOTIF.COMPTE_SUSPENDU,
+      title: "Compte suspendu",
+      body:  `L'accès de "${company.name}" a été suspendu par la DNPEC. Contactez-nous pour plus d'informations.`,
+    });
+  }
 
   revalidatePath("/direction/entreprises");
   revalidatePath(`/direction/entreprises/${id}`);

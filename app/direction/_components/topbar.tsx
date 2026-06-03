@@ -25,6 +25,7 @@ import {
 import { ROLE_LABELS, type AppRole } from "@/lib/status"
 import { signOut } from "@/app/actions/auth"
 import { useTheme } from "@/lib/theme"
+import { useTransition } from "react"
 
 const BREADCRUMB_MAP: Record<string, string> = {
   "/direction/dashboard":                    "Tableau de bord",
@@ -71,6 +72,7 @@ export function Topbar({ profile, unreadCount, onOpenCommandPalette }: TopbarPro
   const pathname = usePathname()
   const crumbs = getBreadcrumbs(pathname)
   const { appTheme, toggleAppTheme } = useTheme()
+  const [, startSignOut] = useTransition()
   const initials = profile.full_name
     .split(" ")
     .slice(0, 2)
@@ -177,15 +179,13 @@ export function Topbar({ profile, unreadCount, onOpenCommandPalette }: TopbarPro
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <form action={signOut}>
-            <DropdownMenuItem
-              className="gap-2 cursor-pointer text-status-bad-text focus:text-status-bad-text focus:bg-status-bad-bg"
-              render={<button type="submit" className="w-full" />}
-            >
-              <LogOut className="size-3.5" />
-              Déconnexion
-            </DropdownMenuItem>
-          </form>
+          <DropdownMenuItem
+            className="gap-2 cursor-pointer text-status-bad-text focus:text-status-bad-text focus:bg-status-bad-bg"
+            onClick={() => startSignOut(() => { signOut() })}
+          >
+            <LogOut className="size-3.5" />
+            Déconnexion
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
