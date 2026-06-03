@@ -3,7 +3,25 @@ import { ArrowLeft, Plus, PencilLine, CheckCircle2, Clock, Archive, Eye, Chevron
 import { cn } from "@/lib/utils"
 
 /* ── Mock data ──────────────────────────────────────────────── */
-const MOCK = {
+type FormVersionStatus = "published" | "draft" | "archived"
+
+const MOCK: {
+  id: string
+  sector: { name: string; code: string }
+  title: string
+  description: string
+  currentVersionId: string
+  versions: {
+    id: string
+    number: number
+    status: FormVersionStatus
+    published_at: string
+    created_at: string
+    created_by: string
+    sections: { key: string; title: string; fields: { key: string; label: string; type: string; required: boolean; unit: string | null }[] }[]
+  }[]
+  activeCampaigns: { id: string; title: string; closes_at: string }[]
+} = {
   id: "f1",
   sector: { name: "Mines", code: "MINES" },
   title: "Formulaire de collecte minière",
@@ -13,7 +31,7 @@ const MOCK = {
     {
       id: "v3",
       number: 3,
-      status: "published" as const,
+      status: "published",
       published_at: "2026-03-15T14:30:00Z",
       created_at:   "2026-03-10T09:00:00Z",
       created_by: "Ibrahim Kouyaté",
@@ -48,7 +66,7 @@ const MOCK = {
     {
       id: "v2",
       number: 2,
-      status: "archived" as const,
+      status: "archived",
       published_at: "2025-09-20T10:00:00Z",
       created_at:   "2025-09-15T08:00:00Z",
       created_by: "Mariam Diallo",
@@ -57,7 +75,7 @@ const MOCK = {
     {
       id: "v1",
       number: 1,
-      status: "archived" as const,
+      status: "archived",
       published_at: "2025-03-01T08:00:00Z",
       created_at:   "2025-02-28T17:00:00Z",
       created_by: "Ibrahim Kouyaté",
