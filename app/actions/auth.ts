@@ -19,7 +19,12 @@ export async function sendOtpAction(email: string): Promise<{ error?: string }> 
     },
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("rate limit") || msg.includes("too many"))
+      return { error: "Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer." };
+    return { error: error.message };
+  }
   return {};
 }
 
