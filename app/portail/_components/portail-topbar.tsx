@@ -19,8 +19,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { signOut } from "@/app/actions/auth"
 import { useTheme } from "@/lib/theme"
 
-const BREADCRUMB_MAP: Record<string, string> = {
+const PAGE_TITLES: Record<string, string> = {
   "/portail/dashboard":     "Tableau de bord",
+  "/portail/campagnes":     "Mes campagnes",
   "/portail/notifications": "Notifications",
   "/portail/profil":        "Mon profil",
 }
@@ -31,12 +32,11 @@ interface PortailTopbarProps {
 }
 
 export function PortailTopbar({ profile, unreadCount }: PortailTopbarProps) {
-  const pathname    = usePathname()
+  const pathname = usePathname()
   const { appTheme, toggleAppTheme } = useTheme()
   const [, startSignOut] = useTransition()
-  const pageLabel   = BREADCRUMB_MAP[pathname] ?? "Portail"
-  const isHome      = pathname === "/portail/dashboard"
-  const initials    = profile.full_name
+  const pageTitle = PAGE_TITLES[pathname] ?? "Portail"
+  const initials  = profile.full_name
     .split(" ")
     .slice(0, 2)
     .map((w) => w[0])
@@ -44,21 +44,9 @@ export function PortailTopbar({ profile, unreadCount }: PortailTopbarProps) {
     .toUpperCase()
 
   return (
-    <header className="flex h-14 items-center gap-3 border-b border-border bg-background px-4 shrink-0">
-      {/* Breadcrumb */}
-      <nav className="flex-1 flex items-center gap-1.5 text-sm min-w-0">
-        <Link href="/portail/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
-          Portail
-        </Link>
-        {!isHome && (
-          <>
-            <span className="text-muted-foreground/50 select-none">/</span>
-            <span className="font-medium text-foreground truncate">{pageLabel}</span>
-          </>
-        )}
-      </nav>
+    <header className="flex h-14 items-center gap-2 border-b border-border bg-background px-5 shrink-0 shadow-subtle">
+      <h1 className="flex-1 text-[14px] font-semibold text-foreground truncate">{pageTitle}</h1>
 
-      {/* App theme */}
       <Tooltip>
         <TooltipTrigger
           className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
@@ -71,7 +59,6 @@ export function PortailTopbar({ profile, unreadCount }: PortailTopbarProps) {
         </TooltipContent>
       </Tooltip>
 
-      {/* Bell → link to notifications */}
       <Link
         href="/portail/notifications"
         className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative")}
@@ -83,20 +70,24 @@ export function PortailTopbar({ profile, unreadCount }: PortailTopbarProps) {
         )}
       </Link>
 
-      {/* Avatar */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-muted transition-colors focus-visible:outline-2 focus-visible:outline-ring cursor-pointer">
+        <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-muted transition-colors focus-visible:outline-2 focus-visible:outline-ring cursor-pointer">
           <Avatar size="sm">
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
-          <span className="hidden sm:block text-sm font-medium max-w-32 truncate">
+          <span className="hidden sm:block text-[13px] font-medium max-w-32 truncate">
             {profile.full_name}
           </span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
-          <div className="px-2 py-1.5 flex flex-col gap-0.5">
-            <p className="text-sm font-medium truncate">{profile.full_name}</p>
-            <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
+        <DropdownMenuContent align="end" className="w-56">
+          <div className="px-2.5 py-2 flex items-center gap-2.5">
+            <Avatar size="sm">
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <p className="text-[13px] font-semibold truncate">{profile.full_name}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{profile.email}</p>
+            </div>
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem

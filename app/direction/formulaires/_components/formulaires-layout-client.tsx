@@ -34,6 +34,18 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 
+/* ── Option normalization ───────────────────────────────────────── */
+function normalizeOption(raw: unknown): { key: string; label: string } {
+  if (typeof raw === "string") return { key: raw, label: raw }
+  if (typeof raw === "object" && raw !== null) {
+    const o = raw as Record<string, unknown>
+    const key   = String(o.id ?? o.key ?? o.value ?? "")
+    const label = String(o.label ?? o.name ?? o.text ?? o.value ?? key)
+    return { key, label }
+  }
+  return { key: String(raw), label: String(raw) }
+}
+
 /* ── Types ──────────────────────────────────────────────────────── */
 export type FormField = {
   key: string
@@ -575,20 +587,21 @@ function ReadOnlyControl({ field, disabledCls }: { field: FormField; disabledCls
     return <input type="date" disabled className={disabledCls} />
   }
   if (field.type === "single_select" || field.type === "multi_select") {
-    const options = field.options ?? []
-    const isMulti = field.type === "multi_select"
+    const rawOptions = (field.options ?? []) as unknown[]
+    const options    = rawOptions.map(normalizeOption)
+    const isMulti    = field.type === "multi_select"
     if (options.length === 0) {
       return <p className="text-xs text-muted-foreground/60 italic">Aucune option configurée</p>
     }
     return (
       <div className="space-y-2">
-        {options.map((opt) => (
-          <div key={opt} className="flex items-center gap-3 text-sm text-foreground/50 cursor-not-allowed select-none">
+        {options.map(({ key, label }) => (
+          <div key={key} className="flex items-center gap-3 text-sm text-foreground/50 cursor-not-allowed select-none">
             <span className={cn(
               "flex size-4 shrink-0 items-center justify-center border-2 border-input/60 bg-muted/40",
               isMulti ? "rounded" : "rounded-full"
             )} />
-            <span>{opt}</span>
+            <span>{label}</span>
           </div>
         ))}
       </div>
@@ -923,8 +936,9 @@ function FillableField({
   }
 
   if (field.type === "single_select") {
-    const options  = field.options ?? []
-    const strValue = (value as string) ?? ""
+    const rawOptions = (field.options ?? []) as unknown[]
+    const options    = rawOptions.map(normalizeOption)
+    const strValue   = (value as string) ?? ""
     return (
       <div>
         <Label />
@@ -932,13 +946,13 @@ function FillableField({
           <p className="text-xs text-muted-foreground/60 italic">Aucune option configurée</p>
         ) : (
           <div className="space-y-2.5 mt-1">
-            {options.map((opt) => {
-              const selected = strValue === opt
+            {options.map(({ key, label }) => {
+              const selected = strValue === key
               return (
                 <button
-                  key={opt}
+                  key={key}
                   type="button"
-                  onClick={() => onChange(opt)}
+                  onClick={() => onChange(key)}
                   className="flex items-center gap-3 text-sm text-foreground w-full text-left group"
                 >
                   <span
@@ -952,7 +966,7 @@ function FillableField({
                     {selected && <span className="size-1.5 rounded-full bg-white" />}
                   </span>
                   <span className={selected ? "font-medium text-foreground" : "text-foreground/80"}>
-                    {opt}
+                    {label}
                   </span>
                 </button>
               )
@@ -964,14 +978,15 @@ function FillableField({
   }
 
   if (field.type === "multi_select") {
-    const options  = field.options ?? []
-    const arrValue = (value as string[]) ?? []
+    const rawOptions = (field.options ?? []) as unknown[]
+    const options    = rawOptions.map(normalizeOption)
+    const arrValue   = (value as string[]) ?? []
 
-    const toggle = (opt: string) =>
+    const toggle = (key: string) =>
       onChange(
-        arrValue.includes(opt)
-          ? arrValue.filter((v) => v !== opt)
-          : [...arrValue, opt]
+        arrValue.includes(key)
+          ? arrValue.filter((v) => v !== key)
+          : [...arrValue, key]
       )
 
     return (
@@ -981,13 +996,13 @@ function FillableField({
           <p className="text-xs text-muted-foreground/60 italic">Aucune option configurée</p>
         ) : (
           <div className="space-y-2.5 mt-1">
-            {options.map((opt) => {
-              const checked = arrValue.includes(opt)
+            {options.map(({ key, label }) => {
+              const checked = arrValue.includes(key)
               return (
                 <button
-                  key={opt}
+                  key={key}
                   type="button"
-                  onClick={() => toggle(opt)}
+                  onClick={() => toggle(key)}
                   className="flex items-center gap-3 text-sm text-foreground w-full text-left group"
                 >
                   <span
@@ -1001,7 +1016,7 @@ function FillableField({
                     {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
                   </span>
                   <span className={checked ? "font-medium text-foreground" : "text-foreground/80"}>
-                    {opt}
+                    {label}
                   </span>
                 </button>
               )
