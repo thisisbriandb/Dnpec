@@ -3,6 +3,100 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdminClient, createClient } from "@/app/lib/supabase/server";
+import { createNotificationForDirection } from "./notifications";
+import { NOTIF } from "@/lib/notif-types";
+
+export async function sendOtpAction(email: string): Promise<{ error?: string }> {
+  const parsed = z.string().email().safeParse(email);
+  if (!parsed.success) return { error: "Adresse email invalide" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithOtp({
+    email: parsed.data,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+    },
+  });
+
+  if (error) return { error: error.message };
+  return {};
+}
+
+export async function verifyOtpAction(email: string, token: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+  if (error) return { error: error.message };
+  return {};
+}
+
+const completeRegistrationSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  full_name: z.string().min(2),
+  nif: z.string().min(3),
+  rccm: z.string().optional(),
+  name: z.string().min(2),
+  sector_id: z.string().uuid(),
+  size: z.enum(["tpe", "pme", "grande_entreprise"]),
+  legal_status: z.enum(["sa", "sarl", "suarl", "gie", "public", "autre"]),
+  phone: z.string().min(6),
+  address: z.string().optional(),
+  creation_year: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.coerce.number().int().min(1800).max(2100).optional(),
+  ),
+});
+
+export async function completeRegistrationAction(formData: FormData): Promise<{ error?: string }> {
+  const parsed = completeRegistrationSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Données invalides" };
+
+  const { email, password, full_name, phone, nif, rccm, name, sector_id, size, legal_status, address, creation_year } = parsed.data;
+
+  const supabase = await createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return { error: "Session expirée. Veuillez recommencer depuis le début." };
+
+  const { error: updateError } = await supabase.auth.updateUser({
+    password,
+    data: { full_name, phone, role: "entreprise" },
+  });
+  if (updateError) return { error: updateError.message };
+
+  const admin = createAdminClient();
+
+  await admin.from("profiles").update({ full_name, phone, role: "entreprise" }).eq("id", user.id);
+
+  const { data: company, error: companyError } = await admin.from("companies").insert({
+    profile_id: user.id,
+    nif,
+    rccm: rccm || null,
+    name,
+    sector_id,
+    size,
+    legal_status,
+    contact_email: email,
+    phone,
+    address: address || null,
+    creation_year: creation_year || null,
+    account_status: "pending",
+  }).select("id").single();
+
+  if (companyError) return { error: companyError.message };
+
+  // Notifier la direction qu'une nouvelle inscription est en attente
+  await createNotificationForDirection(
+    company.id,
+    NOTIF.INSCRIPTION_SOUMISE,
+    `Nouvelle inscription — ${name}`,
+    `L'entreprise "${name}" (NIF : ${nif}) a soumis une demande d'inscription.`,
+    { nif, sector_id },
+  );
+
+  await supabase.auth.signOut();
+  redirect("/login?message=" + encodeURIComponent("Votre demande a été soumise. Attendez la validation DNPEC."));
+}
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -44,7 +138,7 @@ export async function signIn(formData: FormData) {
     .single();
 
   const role = profile?.role ?? (data.user.user_metadata?.role as string) ?? "entreprise";
-  redirect(role === "entreprise" ? "/" : "/direction/dashboard");
+  redirect(role === "entreprise" ? "/portail" : "/direction/dashboard");
 }
 
 export async function signOut() {

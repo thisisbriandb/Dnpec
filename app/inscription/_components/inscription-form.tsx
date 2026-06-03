@@ -5,8 +5,9 @@ import Link from "next/link";
 import {
   Eye, EyeOff, Loader2, Check, ChevronLeft, ChevronRight,
   Building2, User, FileText, ClipboardList, AlertCircle, CheckCircle2,
+  Mail, RefreshCw,
 } from "lucide-react";
-import { signUpCompanyAction } from "@/app/actions/auth";
+import { sendOtpAction, verifyOtpAction, completeRegistrationAction } from "@/app/actions/auth";
 import { Stepper } from "@/components/ui/stepper";
 import type { Step } from "@/components/ui/stepper";
 
@@ -20,8 +21,8 @@ interface InscriptionFormProps {
 }
 
 interface RegistrationData {
-  full_name: string;
   email: string;
+  full_name: string;
   password: string;
   password_confirm: string;
   phone: string;
@@ -35,7 +36,10 @@ interface RegistrationData {
   address: string;
 }
 
+type OtpPhase = "enter-email" | "enter-code";
+
 const STEPS: Step[] = [
+  { id: "email", label: "Vérification email", description: "Confirmez votre adresse" },
   { id: "compte", label: "Votre compte", description: "Accès & contact" },
   { id: "legal", label: "Identité légale", description: "NIF, statut, RCCM" },
   { id: "entreprise", label: "L'entreprise", description: "Nom, secteur, taille" },
@@ -43,7 +47,7 @@ const STEPS: Step[] = [
 ];
 
 const INITIAL_DATA: RegistrationData = {
-  full_name: "", email: "", password: "", password_confirm: "", phone: "",
+  email: "", full_name: "", password: "", password_confirm: "", phone: "",
   nif: "", rccm: "", legal_status: "sarl", creation_year: "",
   name: "", sector_id: "", size: "pme", address: "",
 };
@@ -63,7 +67,7 @@ const LEGAL_LABELS: Record<string, string> = {
   autre: "Autre",
 };
 
-const STEP_ICONS = [User, FileText, Building2, ClipboardList];
+const STEP_ICONS = [Mail, User, FileText, Building2, ClipboardList];
 
 function inputCls(hasError: boolean) {
   return (
@@ -132,6 +136,8 @@ function RecapRow({ label, value }: { label: string; value?: string }) {
 
 export default function InscriptionForm({ sectors }: InscriptionFormProps) {
   const [step, setStep] = useState(0);
+  const [otpPhase, setOtpPhase] = useState<OtpPhase>("enter-email");
+  const [otpCode, setOtpCode] = useState("");
   const [data, setData] = useState<RegistrationData>(INITIAL_DATA);
   const [errors, setErrors] = useState<Partial<Record<keyof RegistrationData, string>>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -147,20 +153,19 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
   function validateStep(s: number): boolean {
     const e: Partial<Record<keyof RegistrationData, string>> = {};
 
-    if (s === 0) {
+    if (s === 1) {
       if (!data.full_name.trim()) e.full_name = "Nom requis";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) e.email = "Adresse email invalide";
       if (data.password.length < 8) e.password = "8 caractères minimum";
       if (data.password !== data.password_confirm) e.password_confirm = "Les mots de passe ne correspondent pas";
       if (!data.phone.trim()) e.phone = "Téléphone requis";
     }
 
-    if (s === 1) {
+    if (s === 2) {
       if (data.nif.trim().length < 3) e.nif = "NIF requis (3 caractères min.)";
       if (!data.legal_status) e.legal_status = "Statut juridique requis";
     }
 
-    if (s === 2) {
+    if (s === 3) {
       if (data.name.trim().length < 2) e.name = "Nom de l'entreprise requis";
       if (!data.sector_id) e.sector_id = "Secteur requis";
     }
@@ -174,12 +179,54 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
   }
 
   function goBack() {
-    setStep((s) => Math.max(0, s - 1));
-    setErrors({});
+    setServerError(null);
+    if (step === 0 && otpPhase === "enter-code") {
+      setOtpPhase("enter-email");
+      setOtpCode("");
+      setErrors({});
+      return;
+    }
+    if (step > 1) {
+      setStep((s) => s - 1);
+      setErrors({});
+    }
   }
 
+  // Never allow navigating back to step 0 (OTP already done)
   function goToStep(i: number) {
-    if (i < step) { setStep(i); setErrors({}); }
+    if (i > 0 && i < step) { setStep(i); setErrors({}); }
+  }
+
+  function handleSendOtp() {
+    setServerError(null);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      setErrors({ email: "Adresse email invalide" });
+      return;
+    }
+    startTransition(async () => {
+      const result = await sendOtpAction(data.email);
+      if (result.error) {
+        setServerError(result.error);
+      } else {
+        setOtpPhase("enter-code");
+      }
+    });
+  }
+
+  function handleVerifyOtp() {
+    setServerError(null);
+    if (otpCode.length !== 6) {
+      setServerError("Le code doit contenir 6 chiffres");
+      return;
+    }
+    startTransition(async () => {
+      const result = await verifyOtpAction(data.email, otpCode);
+      if (result.error) {
+        setServerError(result.error);
+      } else {
+        setStep(1);
+      }
+    });
   }
 
   function handleSubmit() {
@@ -187,7 +234,7 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
     startTransition(async () => {
       const fd = new FormData();
       const entries: [keyof RegistrationData, string][] = [
-        ["full_name", data.full_name], ["email", data.email], ["password", data.password],
+        ["email", data.email], ["full_name", data.full_name], ["password", data.password],
         ["phone", data.phone], ["nif", data.nif], ["rccm", data.rccm],
         ["legal_status", data.legal_status], ["creation_year", data.creation_year],
         ["name", data.name], ["sector_id", data.sector_id], ["size", data.size],
@@ -195,7 +242,7 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
       ];
       entries.forEach(([key, val]) => fd.append(key, val));
 
-      const result = await signUpCompanyAction(fd);
+      const result = await completeRegistrationAction(fd);
       if (result?.error) setServerError(result.error);
     });
   }
@@ -203,6 +250,72 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
   const selectedSector = sectors.find((s) => s.id === data.sector_id);
   const StepIcon = STEP_ICONS[step];
   const progressPct = ((step + 1) / STEPS.length) * 100;
+  const canGoBack = (step === 0 && otpPhase === "enter-code") || step > 1;
+  const isLastStep = step === STEPS.length - 1;
+
+  function renderNextButton() {
+    if (step === 0) {
+      if (otpPhase === "enter-email") {
+        return (
+          <button
+            type="button"
+            onClick={handleSendOtp}
+            disabled={isPending || !data.email}
+            className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+          >
+            {isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin" />Envoi…</>
+            ) : (
+              <><Mail className="h-4 w-4" />Envoyer le code</>
+            )}
+          </button>
+        );
+      }
+      return (
+        <button
+          type="button"
+          onClick={handleVerifyOtp}
+          disabled={isPending || otpCode.length !== 6}
+          className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+        >
+          {isPending ? (
+            <><Loader2 className="h-4 w-4 animate-spin" />Vérification…</>
+          ) : (
+            <><Check className="h-4 w-4" />Vérifier le code</>
+          )}
+        </button>
+      );
+    }
+
+    if (isLastStep) {
+      return (
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isPending || sectors.length === 0}
+          className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm"
+        >
+          {isPending ? (
+            <><Loader2 className="h-4 w-4 animate-spin" />Envoi en cours…</>
+          ) : (
+            <><Check className="h-4 w-4" />Envoyer la demande</>
+          )}
+        </button>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={goNext}
+        disabled={step === 3 && sectors.length === 0}
+        className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+      >
+        Suivant
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F4F7FB]">
@@ -268,25 +381,90 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
 
             {/* Step content */}
             <div className="px-6 py-6 animate-in fade-in duration-200">
-              {/* ── Step 0: Compte ── */}
+
+              {/* ── Step 0: Vérification email ── */}
               {step === 0 && (
+                <div className="space-y-5">
+                  {otpPhase === "enter-email" ? (
+                    <>
+                      <p className="text-[13px] text-muted-foreground">
+                        Renseignez votre adresse email professionnelle. Vous recevrez un code de vérification à 6 chiffres.
+                      </p>
+                      <Field label="Email de contact" error={errors.email}>
+                        <input
+                          type="email"
+                          value={data.email}
+                          onChange={(e) => update("email", e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSendOtp(); }}
+                          placeholder="jean@entreprise.gn"
+                          className={inputCls(!!errors.email)}
+                          autoFocus
+                        />
+                      </Field>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2.5 rounded-xl bg-blue-50 border border-blue-100 px-3.5 py-3">
+                        <CheckCircle2 className="h-4 w-4 text-blue-500 shrink-0" />
+                        <p className="text-[12.5px] text-blue-800">
+                          Code envoyé à <span className="font-semibold">{data.email}</span>
+                        </p>
+                      </div>
+
+                      <Field label="Code de vérification (6 chiffres)">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => {
+                            setOtpCode(e.target.value.replace(/\D/g, ""));
+                            setServerError(null);
+                          }}
+                          onKeyDown={(e) => { if (e.key === "Enter" && otpCode.length === 6) handleVerifyOtp(); }}
+                          placeholder="123456"
+                          className={inputCls(false) + " text-center text-lg tracking-[0.5em] font-mono"}
+                          autoFocus
+                        />
+                      </Field>
+
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={isPending}
+                        className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Renvoyer le code
+                      </button>
+                    </>
+                  )}
+
+                  {serverError && (
+                    <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-200 px-3.5 py-3">
+                      <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                      <p className="text-[12.5px] text-red-800">{serverError}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Step 1: Compte ── */}
+              {step === 1 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2 flex items-center gap-2.5 rounded-xl bg-green-50 border border-green-100 px-3.5 py-3">
+                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                    <p className="text-[12.5px] text-green-800">
+                      Email vérifié : <span className="font-semibold">{data.email}</span>
+                    </p>
+                  </div>
+
                   <Field label="Nom et prénom du point focal" error={errors.full_name} className="sm:col-span-2">
                     <input
                       value={data.full_name}
                       onChange={(e) => update("full_name", e.target.value)}
                       placeholder="Ex : Jean Camara"
                       className={inputCls(!!errors.full_name)}
-                    />
-                  </Field>
-
-                  <Field label="Email de contact" error={errors.email} className="sm:col-span-2">
-                    <input
-                      type="email"
-                      value={data.email}
-                      onChange={(e) => update("email", e.target.value)}
-                      placeholder="jean@entreprise.gn"
-                      className={inputCls(!!errors.email)}
                     />
                   </Field>
 
@@ -342,8 +520,8 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
                 </div>
               )}
 
-              {/* ── Step 1: Identité légale ── */}
-              {step === 1 && (
+              {/* ── Step 2: Identité légale ── */}
+              {step === 2 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field
                     label="NIF — Numéro d'Identification Fiscale"
@@ -379,7 +557,7 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
                     </select>
                   </Field>
 
-                  <Field label="Année de création (optionnel)" error={undefined}>
+                  <Field label="Année de création (optionnel)">
                     <input
                       type="number"
                       value={data.creation_year}
@@ -393,8 +571,8 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
                 </div>
               )}
 
-              {/* ── Step 2: Entreprise ── */}
-              {step === 2 && (
+              {/* ── Step 3: Entreprise ── */}
+              {step === 3 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field
                     label="Nom de l'entreprise"
@@ -443,11 +621,7 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
                     </select>
                   </Field>
 
-                  <Field
-                    label="Adresse (optionnel)"
-                    error={undefined}
-                    className="sm:col-span-2"
-                  >
+                  <Field label="Adresse (optionnel)" className="sm:col-span-2">
                     <input
                       value={data.address}
                       onChange={(e) => update("address", e.target.value)}
@@ -458,8 +632,8 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
                 </div>
               )}
 
-              {/* ── Step 3: Récapitulatif ── */}
-              {step === 3 && (
+              {/* ── Step 4: Récapitulatif ── */}
+              {step === 4 && (
                 <div className="space-y-4">
                   {serverError && (
                     <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-200 px-3.5 py-3">
@@ -468,21 +642,21 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
                     </div>
                   )}
 
-                  <RecapSection title="Compte utilisateur" onEdit={() => goToStep(0)}>
+                  <RecapSection title="Compte utilisateur" onEdit={() => goToStep(1)}>
+                    <RecapRow label="Email vérifié" value={data.email} />
                     <RecapRow label="Nom du point focal" value={data.full_name} />
-                    <RecapRow label="Email" value={data.email} />
                     <RecapRow label="Téléphone" value={data.phone} />
                     <RecapRow label="Mot de passe" value="••••••••" />
                   </RecapSection>
 
-                  <RecapSection title="Identité légale" onEdit={() => goToStep(1)}>
+                  <RecapSection title="Identité légale" onEdit={() => goToStep(2)}>
                     <RecapRow label="NIF" value={data.nif} />
                     {data.rccm && <RecapRow label="RCCM" value={data.rccm} />}
                     <RecapRow label="Statut juridique" value={LEGAL_LABELS[data.legal_status]} />
                     {data.creation_year && <RecapRow label="Année de création" value={data.creation_year} />}
                   </RecapSection>
 
-                  <RecapSection title="Entreprise" onEdit={() => goToStep(2)}>
+                  <RecapSection title="Entreprise" onEdit={() => goToStep(3)}>
                     <RecapRow label="Nom" value={data.name} />
                     <RecapRow label="Secteur" value={selectedSector?.name} />
                     <RecapRow label="Taille" value={SIZE_LABELS[data.size]} />
@@ -492,7 +666,7 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
                   <div className="flex items-start gap-2.5 rounded-xl bg-blue-50 border border-blue-100 px-3.5 py-3">
                     <CheckCircle2 className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
                     <p className="text-[12px] text-blue-800 leading-relaxed">
-                      Après soumission, vous recevrez un email de vérification. Votre demande sera ensuite examinée par la DNPEC avant l&apos;activation de votre accès.
+                      Votre email est vérifié. Votre demande sera examinée par la DNPEC avant l&apos;activation de votre accès.
                     </p>
                   </div>
                 </div>
@@ -504,7 +678,7 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
               <button
                 type="button"
                 onClick={goBack}
-                disabled={step === 0}
+                disabled={!canGoBack}
                 className="flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground disabled:opacity-0 disabled:pointer-events-none transition-all"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -517,36 +691,7 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
                 {STEPS.length}
               </span>
 
-              {step < STEPS.length - 1 ? (
-                <button
-                  type="button"
-                  onClick={goNext}
-                  disabled={step === 2 && sectors.length === 0}
-                  className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-                >
-                  Suivant
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={isPending || sectors.length === 0}
-                  className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Envoi en cours…
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4" />
-                      Envoyer la demande
-                    </>
-                  )}
-                </button>
-              )}
+              {renderNextButton()}
             </div>
           </div>
 
