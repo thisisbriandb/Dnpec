@@ -69,6 +69,16 @@ function Sidebar({
   const [collapsed, setCollapsed] = React.useState(defaultCollapsed)
   const pathname = usePathname()
 
+  // Most specific matching href across all groups (longest wins)
+  const activeHref = React.useMemo(() => {
+    const allItems = groups.flatMap((g) => g.items)
+    const matches = allItems.filter(
+      (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+    )
+    if (matches.length === 0) return null
+    return matches.sort((a, b) => b.href.length - a.href.length)[0].href
+  }, [groups, pathname])
+
   return (
     <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
       <TooltipProvider delay={collapsed ? 300 : 800}>
@@ -158,6 +168,7 @@ function Sidebar({
                 key={gi}
                 group={group}
                 pathname={pathname}
+                activeHref={activeHref}
                 collapsed={collapsed}
                 userRole={userRole}
               />
@@ -230,17 +241,17 @@ function SidebarThemeToggle({ collapsed }: { collapsed: boolean }) {
 function NavGroupSection({
   group,
   pathname,
+  activeHref,
   collapsed,
   userRole,
 }: {
   group: NavGroup
   pathname: string
+  activeHref: string | null
   collapsed: boolean
   userRole?: AppRole
 }) {
-  const hasActiveItem = group.items.some(
-    (item) => pathname === item.href || pathname.startsWith(item.href + "/")
-  )
+  const hasActiveItem = group.items.some((item) => item.href === activeHref)
   const [open, setOpen] = React.useState(group.defaultOpen !== false || hasActiveItem)
 
   const isCollapsible = !!group.collapsible && !collapsed
@@ -327,7 +338,7 @@ function NavGroupSection({
                 <SidebarNavItem
                   key={item.href}
                   item={item}
-                  pathname={pathname}
+                  isActive={item.href === activeHref}
                   collapsed={collapsed}
                   userRole={userRole}
                 />
@@ -343,16 +354,15 @@ function NavGroupSection({
 /* ── Nav item ─────────────────────────────────────────────────── */
 function SidebarNavItem({
   item,
-  pathname,
+  isActive,
   collapsed,
   userRole,
 }: {
   item: NavItem
-  pathname: string
+  isActive: boolean
   collapsed: boolean
   userRole?: AppRole
 }) {
-  const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
   const isRestricted =
     item.requiredRoles && userRole && !item.requiredRoles.includes(userRole)
 

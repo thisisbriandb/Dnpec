@@ -5,7 +5,7 @@ import type { FormSchemaPayload } from "@/app/direction/_components/schema-edito
 
 export const dynamic = "force-dynamic"
 
-export default async function NouvelleVersionPage({
+export default async function ModifierFormulairePage({
   params,
 }: {
   params: Promise<{ id: string }>
@@ -26,35 +26,36 @@ export default async function NouvelleVersionPage({
     redirect(`/direction/formulaires/${id}`)
   }
 
-  const { data: template } = await supabase
+  const { data: template, error: templateError } = await supabase
     .from("form_templates")
     .select(`
-      id, title, current_version_id,
-      sector:sectors!sector_id(id, name)
+      id, title, status, schema,
+      sector:sectors(id, name)
     `)
     .eq("id", id)
     .single()
 
-  if (!template) notFound()
+  if (!template) {
+    if (templateError && (templateError as { code?: string }).code !== "PGRST116") {
+      const err = templateError as { code?: string; message?: string }
+      throw new Error(
+        `Impossible de charger le formulaire (${err.code}) : ${err.message}. ` +
+        "Vérifiez que la migration 20260604000000_simplify_form_schema.sql a été appliquée à Supabase."
+      )
+    }
+    notFound()
+  }
 
   const sector = template.sector as unknown as { id: string; name: string } | null
 
-  const { data: existingDraft } = await supabase
-    .from("form_versions")
-    .select("id, schema")
-    .eq("template_id", id)
-    .eq("status", "draft")
-    .maybeSingle()
+  // Vérifier si une campagne active/planifiée utilise ce formulaire
+  const { count: activeCampaignCount } = await supabase
+    .from("campaigns")
+    .select("id", { count: "exact", head: true })
+    .eq("form_template_id", id)
+    .in("status", ["scheduled", "active"])
 
-  let seedSchema: FormSchemaPayload | null = null
-  if (!existingDraft && template.current_version_id) {
-    const { data: currentVersion } = await supabase
-      .from("form_versions")
-      .select("schema")
-      .eq("id", template.current_version_id)
-      .single()
-    seedSchema = (currentVersion?.schema ?? null) as FormSchemaPayload | null
-  }
+  const isLocked = (activeCampaignCount ?? 0) > 0
 
   return (
     <div className="flex flex-col h-full">
@@ -62,13 +63,9 @@ export default async function NouvelleVersionPage({
         templateId={template.id}
         templateTitle={template.title}
         sectorName={sector?.name ?? ""}
-        existingDraft={
-          existingDraft
-            ? { id: existingDraft.id, schema: existingDraft.schema as unknown as FormSchemaPayload }
-            : null
-        }
-        hasCurrentVersion={!!template.current_version_id}
-        seedSchema={seedSchema}
+        schema={(template.schema ?? { sections: [] }) as FormSchemaPayload}
+        isLocked={isLocked}
+        isPublished={template.status === "published"}
       />
     </div>
   )
