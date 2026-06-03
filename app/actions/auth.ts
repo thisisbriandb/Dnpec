@@ -26,7 +26,12 @@ export async function sendOtpAction(email: string): Promise<{ error?: string }> 
 export async function verifyOtpAction(email: string, token: string): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
-  if (error) return { error: error.message };
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("expired") || msg.includes("invalid"))
+      return { error: "Code incorrect ou expiré. Vérifiez le code ou demandez-en un nouveau." };
+    return { error: error.message };
+  }
   return {};
 }
 
