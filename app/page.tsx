@@ -26,7 +26,7 @@ export default async function HomePage() {
       .single();
 
     const role = profile?.role ?? "entreprise";
-    espaceHref = DIRECTION_ROLES.includes(role) ? "/direction/dashboard" : "/dashboard";
+    espaceHref = DIRECTION_ROLES.includes(role) ? "/direction/dashboard" : "/portail";
   }
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-white">
