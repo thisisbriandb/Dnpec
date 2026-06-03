@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { Lock } from "lucide-react"
+import { Lock, Building2, User } from "lucide-react"
 import { createClient } from "@/app/lib/supabase/server"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { formatDate } from "@/lib/format"
@@ -22,11 +22,13 @@ const LEGAL_LABELS: Record<string, string> = {
   autre:  "Autre",
 }
 
-function ReadRow({ label, value }: { label: string; value?: string | null }) {
+function InfoField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-2.5 border-b border-border/50 last:border-0">
-      <span className="text-[12px] text-muted-foreground shrink-0">{label}</span>
-      <span className="text-[12.5px] font-medium text-foreground text-right">{value || "—"}</span>
+    <div className="space-y-0.5">
+      <p className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+        {label}
+      </p>
+      <p className="text-[13px] font-medium text-foreground">{value || "—"}</p>
     </div>
   )
 }
@@ -55,8 +57,18 @@ export default async function PortailProfilPage() {
   const company = companyRes.data
   const sector  = (company.sector as unknown as { name: string } | null)?.name ?? "—"
 
+  const companyInitials = company.name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
+
+      {/* Page header */}
       <div>
         <h1 className="text-display font-semibold text-foreground">Mon profil</h1>
         <p className="text-[13px] text-muted-foreground mt-0.5">
@@ -64,48 +76,82 @@ export default async function PortailProfilPage() {
         </p>
       </div>
 
-      {/* Informations entreprise — lecture seule */}
-      <section className="bg-white rounded-2xl border border-border shadow-subtle overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60 bg-muted/20">
-          <div className="flex items-center gap-2">
-            <Lock className="size-3.5 text-muted-foreground" />
-            <h2 className="text-[13px] font-semibold text-foreground">Informations entreprise</h2>
+      {/* Company identity card */}
+      <div className="relative rounded-2xl border border-border bg-card shadow-subtle overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "linear-gradient(135deg, rgba(30,58,95,0.05) 0%, transparent 55%)" }}
+        />
+        <div className="relative px-6 py-5 flex items-center gap-4">
+          <div
+            className="flex size-14 shrink-0 items-center justify-center rounded-2xl text-white font-bold text-lg shadow-sm"
+            style={{ background: "linear-gradient(135deg, #1E3A5F 0%, #2563eb 100%)" }}
+          >
+            {companyInitials}
           </div>
-          <StatusBadge status={company.account_status} size="sm" />
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[16px] font-semibold text-foreground leading-tight">{company.name}</h2>
+            <p className="text-[12px] text-muted-foreground mt-0.5">{sector} · NIF {company.nif}</p>
+          </div>
+          <StatusBadge status={company.account_status} />
         </div>
+      </div>
 
-        <div className="px-5 py-2">
-          <ReadRow label="Raison sociale"   value={company.name} />
-          <ReadRow label="NIF"              value={company.nif} />
-          <ReadRow label="RCCM"             value={company.rccm} />
-          <ReadRow label="Secteur"          value={sector} />
-          <ReadRow label="Taille"           value={SIZE_LABELS[company.size] ?? company.size} />
-          <ReadRow label="Forme juridique"  value={LEGAL_LABELS[company.legal_status] ?? company.legal_status} />
-          <ReadRow label="Date de création" value={formatDate(company.date_creation ?? null)} />
-          <ReadRow label="Région"           value={company.region} />
-          <ReadRow label="Commune"          value={company.commune} />
-          <ReadRow label="Adresse"          value={company.address} />
-          <ReadRow label="Enregistrée le"   value={formatDate(company.created_at)} />
-        </div>
+      {/* 2-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-        <p className="px-5 pb-3 text-[11px] text-muted-foreground/70 flex items-center gap-1">
-          <Lock className="size-3" />
-          Ces informations sont gérées par la DNPEC. Contactez-nous pour les modifier.
-        </p>
-      </section>
+        {/* Informations entreprise — lecture seule */}
+        <section className="lg:col-span-3 bg-card rounded-2xl border border-border shadow-subtle overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60 bg-muted/20">
+            <div className="flex items-center gap-2">
+              <Building2 className="size-3.5 text-muted-foreground" />
+              <h3 className="text-[13px] font-semibold text-foreground">Informations entreprise</h3>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground/55">
+              <Lock className="size-3" />
+              <span>Lecture seule</span>
+            </div>
+          </div>
 
-      {/* Contact — éditable */}
-      <section className="bg-white rounded-2xl border border-border shadow-subtle overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-border/60 bg-muted/20">
-          <h2 className="text-[13px] font-semibold text-foreground">Point focal</h2>
-          <p className="text-[12px] text-muted-foreground mt-0.5">
-            {profile.full_name} · Coordonnées modifiables
-          </p>
-        </div>
-        <div className="px-5 py-5">
-          <ContactForm phone={profile.phone ?? null} email={profile.email} />
-        </div>
-      </section>
+          <div className="px-5 py-5 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            <InfoField label="Raison sociale"   value={company.name} />
+            <InfoField label="NIF"              value={company.nif} />
+            <InfoField label="RCCM"             value={company.rccm} />
+            <InfoField label="Secteur"          value={sector} />
+            <InfoField label="Taille"           value={SIZE_LABELS[company.size] ?? company.size} />
+            <InfoField label="Forme juridique"  value={LEGAL_LABELS[company.legal_status] ?? company.legal_status} />
+            <InfoField label="Date de création" value={formatDate(company.date_creation ?? null)} />
+            <InfoField label="Région"           value={company.region} />
+            <InfoField label="Commune"          value={company.commune} />
+            <InfoField label="Adresse"          value={company.address} />
+            <InfoField label="Enregistrée le"   value={formatDate(company.created_at)} />
+          </div>
+
+          <div className="px-5 pb-4 border-t border-border/40 pt-3">
+            <p className="text-[11px] text-muted-foreground/55 flex items-center gap-1.5">
+              <Lock className="size-3 shrink-0" />
+              Ces informations sont gérées par la DNPEC. Contactez-nous pour les modifier.
+            </p>
+          </div>
+        </section>
+
+        {/* Point focal — éditable */}
+        <section className="lg:col-span-2 bg-card rounded-2xl border border-border shadow-subtle overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-border/60 bg-muted/20">
+            <div className="flex items-center gap-2 mb-0.5">
+              <User className="size-3.5 text-muted-foreground" />
+              <h3 className="text-[13px] font-semibold text-foreground">Point focal</h3>
+            </div>
+            <p className="text-[12px] text-muted-foreground">
+              {profile.full_name} · Coordonnées modifiables
+            </p>
+          </div>
+          <div className="px-5 py-5">
+            <ContactForm phone={profile.phone ?? null} email={profile.email} />
+          </div>
+        </section>
+
+      </div>
     </div>
   )
 }

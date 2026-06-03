@@ -1,240 +1,239 @@
+import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Plus, ArrowRight } from "lucide-react"
+import {
+  Plus, Megaphone, CheckCircle2, Clock, Users,
+  AlertTriangle, ArrowUpRight, FileText, Inbox,
+} from "lucide-react"
+import { createClient } from "@/app/lib/supabase/server"
 import { cn } from "@/lib/utils"
+import {
+  CampaignsSidepanelClient,
+  type CampaignItem,
+  type CampaignStatus,
+} from "@/app/direction/_components/campaigns-sidepanel-client"
 
-/* ── Status display config ──────────────────────────────────── */
-const CAMPAIGN_STATUS = {
-  active:    { label: "Active",    strip: "bg-emerald-500", badgeBg: "bg-emerald-50",  badgeText: "text-emerald-700", badgeBorder: "border-emerald-200" },
-  scheduled: { label: "Planifiée", strip: "bg-blue-500",    badgeBg: "bg-blue-50",     badgeText: "text-blue-700",    badgeBorder: "border-blue-200"    },
-  draft:     { label: "Brouillon", strip: "bg-gray-200",    badgeBg: "bg-gray-50",     badgeText: "text-gray-500",    badgeBorder: "border-gray-200"    },
-  closed:    { label: "Clôturée",  strip: "bg-slate-300",   badgeBg: "bg-slate-50",    badgeText: "text-slate-600",   badgeBorder: "border-slate-200"   },
-  archived:  { label: "Archivée",  strip: "bg-gray-100",    badgeBg: "bg-gray-50",     badgeText: "text-gray-400",    badgeBorder: "border-gray-100"    },
-} as const
+export const dynamic = "force-dynamic"
 
-const SECTOR_CHIP: Record<string, string> = {
-  "Mines":     "bg-amber-500  text-white",
-  "Finances":  "bg-blue-600   text-white",
-  "Commerce":  "bg-orange-500 text-white",
-  "Industrie": "bg-violet-500 text-white",
-  "Energie":   "bg-emerald-600 text-white",
-}
+export default async function CampagnesPage() {
+  const supabase = await createClient()
 
-const PERIODICITY: Record<string, string> = {
-  monthly: "Mensuel", quarterly: "Trimestriel", annual: "Annuel", one_off: "Ponctuel",
-}
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect("/login")
 
-/* ── Types ──────────────────────────────────────────────────── */
-type Status = keyof typeof CAMPAIGN_STATUS
-type TargetStats = { total: number; validated: number; submitted: number }
+  const { data: rows } = await supabase
+    .from("campaigns")
+    .select(`
+      id, title, periodicity, reference_period, status,
+      opens_at, closes_at, target_mode,
+      sector:sectors!sector_id(name, code),
+      campaign_targets(status),
+      submissions(status)
+    `)
+    .order("created_at", { ascending: false })
 
-type Campaign = {
-  id: string
-  title: string
-  sector: { name: string; code: string }
-  periodicity: string
-  reference_period: string
-  status: Status
-  opens_at: string | null
-  closes_at: string | null
-  targets: TargetStats
-}
+  const campaigns: CampaignItem[] = (rows ?? []).map((row) => {
+    const tgts   = (row.campaign_targets ?? []) as { status: string }[]
+    const subs   = (row.submissions      ?? []) as { status: string }[]
+    const sector = row.sector as unknown as { name: string; code: string } | null
+    return {
+      id:               row.id,
+      title:            row.title,
+      sector:           sector ?? { name: "—", code: "—" },
+      periodicity:      row.periodicity,
+      reference_period: row.reference_period,
+      status:           (row.status as CampaignStatus) ?? "draft",
+      opens_at:         row.opens_at  ?? null,
+      closes_at:        row.closes_at ?? null,
+      target_mode:      row.target_mode ?? "sector",
+      targets: {
+        total:     tgts.length,
+        validated: subs.filter((s) => s.status === "validated").length,
+        submitted: subs.filter((s) => s.status === "submitted" || s.status === "correction_requested").length,
+      },
+    }
+  })
 
-/* ── Mock data ──────────────────────────────────────────────── */
-function inDays(n: number) {
-  const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().split("T")[0]
-}
-
-const CAMPAIGNS: Campaign[] = [
-  { id: "c1", title: "Collecte mensuelle Mines — Mai 2026",            sector: { name: "Mines",     code: "MINES"     }, periodicity: "monthly",   reference_period: "Mai 2026", status: "active",    opens_at: "2026-05-01", closes_at: inDays(4),  targets: { total: 50, validated: 26, submitted: 14 } },
-  { id: "c2", title: "Bilan annuel Finance 2025",                      sector: { name: "Finances",  code: "FINANCE"   }, periodicity: "annual",    reference_period: "2025",     status: "active",    opens_at: "2026-05-01", closes_at: inDays(22), targets: { total: 12, validated: 9,  submitted: 2  } },
-  { id: "c3", title: "Enquête trimestrielle Commerce — T2 2026",       sector: { name: "Commerce",  code: "COMMERCE"  }, periodicity: "quarterly", reference_period: "T2 2026",  status: "active",    opens_at: "2026-05-01", closes_at: inDays(31), targets: { total: 9,  validated: 0,  submitted: 3  } },
-  { id: "c4", title: "Collecte énergie — Rapport semestriel S1",       sector: { name: "Energie",   code: "ENERGIE"   }, periodicity: "one_off",   reference_period: "S1 2026",  status: "active",    opens_at: "2026-05-01", closes_at: inDays(45), targets: { total: 7,  validated: 2,  submitted: 1  } },
-  { id: "c7", title: "Collecte mensuelle Mines — Juin 2026",           sector: { name: "Mines",     code: "MINES"     }, periodicity: "monthly",   reference_period: "Juin 2026",status: "scheduled", opens_at: inDays(8),    closes_at: inDays(38), targets: { total: 50, validated: 0,  submitted: 0  } },
-  { id: "c8", title: "Pilote Commerce numérique 2026",                 sector: { name: "Commerce",  code: "COMMERCE"  }, periodicity: "one_off",   reference_period: "2026",     status: "draft",     opens_at: null,         closes_at: null,       targets: { total: 0,  validated: 0,  submitted: 0  } },
-  { id: "c5", title: "Collecte industrie Q4 2025",                     sector: { name: "Industrie", code: "INDUSTRIE" }, periodicity: "quarterly", reference_period: "Q4 2025",  status: "closed",    opens_at: "2026-01-01", closes_at: "2026-04-01", targets: { total: 5,  validated: 5,  submitted: 0  } },
-  { id: "c6", title: "Enquête Finance T3 2025",                        sector: { name: "Finances",  code: "FINANCE"   }, periodicity: "quarterly", reference_period: "T3 2025",  status: "closed",    opens_at: "2025-10-01", closes_at: "2025-12-31", targets: { total: 12, validated: 10, submitted: 0  } },
-  { id: "c9", title: "Bilan annuel Mines 2024",                        sector: { name: "Mines",     code: "MINES"     }, periodicity: "annual",    reference_period: "2024",     status: "archived",  opens_at: "2025-01-01", closes_at: "2025-06-30", targets: { total: 18, validated: 16, submitted: 0  } },
-]
-
-/* ── Helpers ────────────────────────────────────────────────── */
-function daysUntil(s: string) {
-  return Math.ceil((new Date(s).getTime() - Date.now()) / 86_400_000)
-}
-function shortDate(s: string) {
-  return new Date(s).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "2-digit" })
-}
-
-/* ── Sub-components ─────────────────────────────────────────── */
-function ProgressMini({ t }: { t: TargetStats }) {
-  if (t.total === 0) return <span className="text-xs text-muted-foreground">—</span>
-  const responded = t.validated + t.submitted
-  const rate = Math.round((responded / t.total) * 100)
-  const color = rate >= 80 ? "#22c55e" : rate >= 50 ? "#3b82f6" : "#f59e0b"
-  return (
-    <div className="flex items-center gap-2 w-full">
-      <div className="h-1 flex-1 rounded-full bg-gray-100 overflow-hidden">
-        <div className="h-full rounded-full transition-all" style={{ width: `${rate}%`, backgroundColor: color }} />
-      </div>
-      <span className="text-[11px] tabular-nums text-gray-400 shrink-0 font-medium">{responded}/{t.total}</span>
-    </div>
-  )
-}
-
-function CampaignRow({ c, muted }: { c: Campaign; muted?: boolean }) {
-  const cfg   = CAMPAIGN_STATUS[c.status]
-  const chip  = SECTOR_CHIP[c.sector.name] ?? "bg-gray-500 text-white"
-  const days  = c.closes_at ? daysUntil(c.closes_at) : null
-  const isUrgent = days !== null && days <= 7 && c.status === "active"
+  /* ── Agrégats ─────────────────────────────────────────────── */
+  const totalCampaigns = campaigns.length
+  const activeCount    = campaigns.filter((c) => c.status === "active").length
+  const scheduledCount = campaigns.filter((c) => c.status === "scheduled").length
+  const totalTargets   = campaigns.reduce((s, c) => s + c.targets.total, 0)
+  const totalValidated = campaigns.reduce((s, c) => s + c.targets.validated, 0)
+  const pendingCount   = campaigns.reduce((s, c) => s + c.targets.submitted, 0)
 
   return (
-    <Link
-      href={`/direction/campagnes/${c.id}`}
-      className={cn(
-        "flex items-center group transition-colors",
-        muted ? "hover:bg-muted/20 opacity-60 hover:opacity-100" : "hover:bg-muted/30",
-      )}
-    >
-      {/* Status colour strip */}
-      <div className={cn("w-[3px] self-stretch shrink-0", cfg.strip)} />
+    <div className="flex flex-col">
 
-      <div className="flex flex-1 items-center gap-3 px-4 py-3 min-w-0">
-        {/* Sector chip */}
-        <span className={cn(
-          "hidden sm:inline text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider leading-tight",
-          chip,
-        )}>
-          {c.sector.code}
-        </span>
-
-        {/* Title + meta */}
-        <div className="flex-1 min-w-0">
-          <p className={cn("text-sm font-medium truncate", muted ? "text-muted-foreground" : "text-foreground")}>
-            {c.title}
-          </p>
-          <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-            {c.reference_period} · {PERIODICITY[c.periodicity] ?? c.periodicity}
-          </p>
-        </div>
-
-        {/* Progress */}
-        <div className="hidden md:block w-28 shrink-0">
-          <ProgressMini t={c.targets} />
-        </div>
-
-        {/* Deadline */}
-        <div className="hidden lg:block w-20 shrink-0 text-right">
-          {days !== null && c.status === "active" ? (
-            <span className={cn(
-              "text-[11px] font-bold tabular-nums",
-              isUrgent ? (days <= 3 ? "text-red-600" : "text-orange-500") : "text-muted-foreground",
-            )}>
-              J‑{days}
-            </span>
-          ) : c.closes_at ? (
-            <span className="text-[11px] text-muted-foreground">{shortDate(c.closes_at)}</span>
-          ) : (
-            <span className="text-[11px] text-muted-foreground/40">—</span>
-          )}
-        </div>
-
-        {/* Status badge */}
-        <span className={cn(
-          "hidden sm:inline text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0",
-          cfg.badgeBg, cfg.badgeText, cfg.badgeBorder,
-        )}>
-          {cfg.label}
-        </span>
-
-        <ArrowRight className="size-3.5 text-muted-foreground/20 group-hover:text-muted-foreground/60 transition-colors shrink-0" />
-      </div>
-    </Link>
-  )
-}
-
-function CampaignGroup({
-  label, dot, campaigns, muted = false,
-}: {
-  label: string; dot: string; campaigns: Campaign[]; muted?: boolean
-}) {
-  if (campaigns.length === 0) return null
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-2">
-        <div className={cn("size-2 rounded-full shrink-0", dot)} />
-        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{label}</span>
-        <span className="text-[10px] font-semibold text-muted-foreground/50 tabular-nums ml-0.5">{campaigns.length}</span>
-      </div>
-      <div className="rounded-xl border-2 border-border bg-card shadow-medium overflow-hidden divide-y divide-border">
-        {campaigns.map((c) => <CampaignRow key={c.id} c={c} muted={muted} />)}
-      </div>
-    </div>
-  )
-}
-
-/* ── Page ───────────────────────────────────────────────────── */
-export default function CampagnesPage() {
-  const active    = CAMPAIGNS.filter(c => c.status === "active")
-  const scheduled = CAMPAIGNS.filter(c => c.status === "scheduled")
-  const draft     = CAMPAIGNS.filter(c => c.status === "draft")
-  const past      = CAMPAIGNS.filter(c => c.status === "closed" || c.status === "archived")
-
-  const totalTargets    = active.reduce((s, c) => s + c.targets.total, 0)
-  const totalValidated  = active.reduce((s, c) => s + c.targets.validated, 0)
-  const totalResponded  = active.reduce((s, c) => s + c.targets.validated + c.targets.submitted, 0)
-  const globalRate      = totalTargets > 0 ? Math.round((totalResponded / totalTargets) * 100) : 0
-
-  return (
-    <div className="flex flex-col min-h-full">
-
-      {/* ── Page header ───────────────────────────── */}
-      <div className="px-6 py-5 border-b-2 border-border bg-card">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+      {/* ── En-tête ─────────────────────────────────────────────── */}
+      <div className="shrink-0 px-6 py-4 border-b border-border bg-card">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-[18px] font-semibold tracking-tight text-foreground">
               Campagnes de collecte
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {CAMPAIGNS.length} campagnes · {active.length} active{active.length > 1 ? "s" : ""}
+              {totalCampaigns} campagne{totalCampaigns !== 1 ? "s" : ""}
+              {activeCount > 0 ? ` · ${activeCount} active${activeCount > 1 ? "s" : ""}` : ""}
             </p>
           </div>
+          <Link
+            href="/direction/campagnes/nouvelle"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors shadow-sm shrink-0"
+          >
+            <Plus className="size-4" />
+            Nouvelle campagne
+          </Link>
+        </div>
+      </div>
 
-          <div className="flex items-center gap-4">
-            {/* Quick stats */}
-            <div className="hidden lg:flex items-center divide-x divide-border">
-              <div className="pr-4 text-center">
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-semibold">Ciblées</p>
-                <p className="text-lg font-bold tabular-nums text-foreground">{totalTargets}</p>
-              </div>
-              <div className="px-4 text-center">
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-semibold">Validées</p>
-                <p className="text-lg font-bold tabular-nums text-emerald-600">{totalValidated}</p>
-              </div>
-              <div className="pl-4 text-center">
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-semibold">Taux réponse</p>
-                <p className="text-lg font-bold tabular-nums" style={{ color: globalRate >= 80 ? "#16a34a" : globalRate >= 50 ? "#2563eb" : "#d97706" }}>
-                  {globalRate} %
-                </p>
-              </div>
+      {/* ── Section stats ────────────────────────────────────────── */}
+      <div
+        className="shrink-0 px-6 pt-5 pb-4 space-y-3 border-b border-border"
+        style={{ background: "hsl(var(--muted)/0.25)" }}
+      >
+        {/* Cartes stats */}
+        <div className="grid grid-cols-4 gap-3">
+
+          {/* Campagnes totales */}
+          <div className="relative rounded-2xl border border-border bg-card p-4 shadow-subtle overflow-hidden flex items-center gap-4">
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary/60 via-primary to-primary/60 rounded-t-2xl" />
+            <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 shrink-0">
+              <Megaphone className="size-5 text-primary" />
             </div>
+            <div className="min-w-0">
+              <p className="text-[28px] font-bold text-foreground leading-none tabular-nums">{totalCampaigns}</p>
+              <p className="text-[11px] font-semibold text-muted-foreground mt-1.5">Campagnes</p>
+              <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                {scheduledCount > 0
+                  ? `${scheduledCount} planifiée${scheduledCount > 1 ? "s" : ""}`
+                  : "Aucune planifiée"}
+              </p>
+            </div>
+          </div>
 
+          {/* Actives */}
+          <div className={cn(
+            "relative rounded-2xl border p-4 shadow-subtle overflow-hidden flex items-center gap-4",
+            activeCount > 0 ? "border-emerald-200 bg-emerald-50/70" : "border-border bg-card",
+          )}>
+            {activeCount > 0 && (
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-400/60 via-emerald-500 to-emerald-400/60 rounded-t-2xl" />
+            )}
+            <div className={cn(
+              "flex size-11 items-center justify-center rounded-xl shrink-0",
+              activeCount > 0 ? "bg-emerald-100" : "bg-muted",
+            )}>
+              <CheckCircle2 className={cn("size-5", activeCount > 0 ? "text-emerald-600" : "text-muted-foreground/30")} />
+            </div>
+            <div className="min-w-0">
+              <p className={cn("text-[28px] font-bold leading-none tabular-nums", activeCount > 0 ? "text-emerald-700" : "text-muted-foreground/30")}>
+                {activeCount}
+              </p>
+              <p className={cn("text-[11px] font-semibold mt-1.5", activeCount > 0 ? "text-emerald-600" : "text-muted-foreground")}>
+                Actives
+              </p>
+              <p className="text-[10px] text-muted-foreground/50 mt-0.5">En cours de collecte</p>
+            </div>
+          </div>
+
+          {/* En attente de validation */}
+          <div className={cn(
+            "relative rounded-2xl border p-4 shadow-subtle overflow-hidden flex items-center gap-4",
+            pendingCount > 0 ? "border-amber-200 bg-amber-50/70" : "border-border bg-card",
+          )}>
+            {pendingCount > 0 && (
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-amber-400/60 via-amber-500 to-amber-400/60 rounded-t-2xl" />
+            )}
+            <div className={cn(
+              "flex size-11 items-center justify-center rounded-xl shrink-0",
+              pendingCount > 0 ? "bg-amber-100" : "bg-muted",
+            )}>
+              <Clock className={cn("size-5", pendingCount > 0 ? "text-amber-600" : "text-muted-foreground/30")} />
+            </div>
+            <div className="min-w-0">
+              <p className={cn("text-[28px] font-bold leading-none tabular-nums", pendingCount > 0 ? "text-amber-700" : "text-muted-foreground/30")}>
+                {pendingCount}
+              </p>
+              <p className={cn("text-[11px] font-semibold mt-1.5", pendingCount > 0 ? "text-amber-600" : "text-muted-foreground")}>
+                En attente
+              </p>
+              <p className="text-[10px] text-muted-foreground/50 mt-0.5">Soumissions à valider</p>
+            </div>
+          </div>
+
+          {/* Entreprises ciblées */}
+          <div className="relative rounded-2xl border border-border bg-card p-4 shadow-subtle overflow-hidden flex items-center gap-4">
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-blue-400/60 via-blue-500 to-blue-400/60 rounded-t-2xl" />
+            <div className="flex size-11 items-center justify-center rounded-xl bg-blue-50 shrink-0">
+              <Users className="size-5 text-blue-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[28px] font-bold text-foreground leading-none tabular-nums">{totalTargets}</p>
+              <p className="text-[11px] font-semibold text-muted-foreground mt-1.5">Entreprises</p>
+              <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                {totalValidated} validée{totalValidated !== 1 ? "s" : ""}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Barre alerte + actions rapides */}
+        <div className="flex items-center gap-3 flex-wrap">
+
+          {/* Alerte soumissions */}
+          {pendingCount > 0 ? (
             <Link
-              href="/direction/campagnes/nouvelle"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors shadow-sm"
+              href="/direction/soumissions"
+              className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100 hover:border-amber-300 transition-colors shadow-subtle"
             >
-              <Plus className="size-4" />
-              Nouvelle campagne
+              <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
+              <span>
+                {pendingCount} soumission{pendingCount > 1 ? "s" : ""} en attente de validation
+              </span>
+              <ArrowUpRight className="size-3.5 shrink-0" />
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/50 italic">
+              <CheckCircle2 className="size-3 text-emerald-400" />
+              Aucune soumission en attente
+            </span>
+          )}
+
+          {/* Actions rapides */}
+          <div className="ml-auto flex items-center gap-2">
+            <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mr-1 hidden sm:block">
+              Actions rapides
+            </p>
+            <Link
+              href="/direction/formulaires"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-subtle"
+            >
+              <FileText className="size-3.5" />
+              Formulaires
+            </Link>
+            <Link
+              href="/direction/soumissions"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors shadow-subtle",
+                pendingCount > 0
+                  ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted",
+              )}
+            >
+              <Inbox className="size-3.5" />
+              Toutes les soumissions
+              {pendingCount > 0 && (
+                <span className="ml-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white tabular-nums">
+                  {pendingCount > 99 ? "99+" : pendingCount}
+                </span>
+              )}
             </Link>
           </div>
         </div>
       </div>
 
-      {/* ── Lists ─────────────────────────────────── */}
-      <div className="flex-1 p-6 space-y-5">
-        <CampaignGroup label="Actives"              dot="bg-emerald-500" campaigns={active}    />
-        <CampaignGroup label="Planifiées"           dot="bg-blue-500"   campaigns={scheduled} />
-        <CampaignGroup label="Brouillons"           dot="bg-gray-300"   campaigns={draft}     />
-        <CampaignGroup label="Clôturées · Archivées" dot="bg-gray-200"   campaigns={past}   muted />
-      </div>
+      {/* ── Sidepanel ───────────────────────────────────────────── */}
+      <CampaignsSidepanelClient campaigns={campaigns} />
     </div>
   )
 }

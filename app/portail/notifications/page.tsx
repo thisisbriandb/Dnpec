@@ -20,7 +20,7 @@ export default async function PortailNotificationsPage() {
   const list = notifications ?? []
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-4">
+    <div className="p-6 space-y-4">
       <div>
         <h1 className="text-display font-semibold text-foreground">Notifications</h1>
         <p className="text-[13px] text-muted-foreground mt-0.5">

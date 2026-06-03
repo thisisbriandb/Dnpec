@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
   Megaphone, CheckSquare, Clock, Bell, ArrowRight,
-  Building2, CalendarClock,
+  Building2, CalendarClock, Briefcase, Hash, ChevronRight,
 } from "lucide-react"
 import { createClient } from "@/app/lib/supabase/server"
 import { StatCard } from "@/components/ui/stat-card"
@@ -60,50 +60,94 @@ export default async function PortailDashboardPage() {
 
   const sectorName = (company.sector as unknown as { name: string } | null)?.name ?? "—"
 
-  return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+  const companyInitials = company.name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
 
-      {/* Header entreprise */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div className="flex items-center gap-3">
+  return (
+    <div className="p-6 space-y-6">
+
+      {/* Hero section */}
+      <div className="relative rounded-2xl border border-border bg-card shadow-subtle overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "linear-gradient(135deg, rgba(30,58,95,0.05) 0%, transparent 55%)" }}
+        />
+        <div className="relative px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
           <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl font-bold text-white text-sm"
-            style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)" }}
+            className="flex size-16 shrink-0 items-center justify-center rounded-2xl text-white font-bold text-xl shadow-sm"
+            style={{ background: "linear-gradient(135deg, #1E3A5F 0%, #2563eb 100%)" }}
           >
-            {company.name.slice(0, 2).toUpperCase()}
+            {companyInitials}
           </div>
-          <div>
-            <h1 className="text-display font-semibold text-foreground leading-tight">{company.name}</h1>
-            <p className="text-[12px] text-muted-foreground mt-0.5">{sectorName} · NIF {company.nif}</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <h1 className="text-xl font-semibold text-foreground leading-tight">{company.name}</h1>
+              <StatusBadge status={company.account_status} />
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-[12px] text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Briefcase className="size-3.5" />
+                {sectorName}
+              </span>
+              <span className="flex items-center gap-1">
+                <Hash className="size-3.5" />
+                NIF {company.nif}
+              </span>
+            </div>
           </div>
+          {activeTargets.length > 0 && (
+            <Link
+              href="/portail/campagnes"
+              className="shrink-0 flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-[12px] font-semibold text-primary hover:bg-primary/10 transition-colors"
+            >
+              <Megaphone className="size-3.5" />
+              {activeTargets.length} campagne{activeTargets.length > 1 ? "s" : ""} active{activeTargets.length > 1 ? "s" : ""}
+              <ChevronRight className="size-3.5" />
+            </Link>
+          )}
         </div>
-        <StatusBadge status={company.account_status} />
       </div>
 
-      {/* Bandeau campagne active */}
+      {/* Bannière campagne active */}
       {activeTargets.length > 0 && (() => {
-        const t      = activeTargets[0]
-        const camp   = t.campaigns as unknown as CampRow
+        const t    = activeTargets[0]
+        const camp = t.campaigns as unknown as CampRow
         if (!camp) return null
         return (
-          <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
-            <div className="flex items-center gap-2.5">
-              <Megaphone className="size-4 text-primary shrink-0" />
-              <div>
-                <p className="text-[13px] font-semibold text-foreground">{camp.title}</p>
-                <p className="text-[11.5px] text-muted-foreground flex items-center gap-1">
-                  <CalendarClock className="size-3" />
-                  Se termine le {formatDate(camp.closes_at)}
-                </p>
+          <div
+            className="relative overflow-hidden rounded-xl border border-primary/20 shadow-subtle"
+            style={{ background: "linear-gradient(135deg, #1E3A5F 0%, #1d4ed8 100%)" }}
+          >
+            <div
+              className="absolute inset-0 pointer-events-none opacity-10"
+              style={{ backgroundImage: "radial-gradient(circle at 85% 50%, white 0%, transparent 55%)" }}
+            />
+            <div className="relative flex items-center justify-between gap-4 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/10">
+                  <Megaphone className="size-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-white leading-tight">{camp.title}</p>
+                  <p className="text-[11.5px] text-white/60 flex items-center gap-1 mt-0.5">
+                    <CalendarClock className="size-3" />
+                    Se termine le {formatDate(camp.closes_at)}
+                  </p>
+                </div>
               </div>
+              <Link
+                href={`/portail/campagnes/${camp.id}`}
+                className="shrink-0 flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-2 text-[12px] font-semibold text-primary hover:bg-white/90 transition-colors shadow-sm"
+              >
+                Répondre
+                <ArrowRight className="size-3.5" />
+              </Link>
             </div>
-            <Link
-              href={`/portail/campagnes/${camp.id}`}
-              className="shrink-0 flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Répondre
-              <ArrowRight className="size-3.5" />
-            </Link>
           </div>
         )
       })()}
@@ -113,36 +157,38 @@ export default async function PortailDashboardPage() {
         <StatCard
           label="Campagnes actives"
           value={activeTargets.length}
-          icon={<Megaphone className="size-4" />}
+          icon={<Megaphone className="size-4 text-primary" />}
           sparklineColor="info"
         />
         <StatCard
           label="Soumissions en attente"
           value={pendingSubmissions}
-          icon={<Clock className="size-4" />}
+          icon={<Clock className="size-4 text-status-warn-text" />}
           sparklineColor="warn"
         />
         <StatCard
           label="Soumissions validées"
           value={submissions.filter((s) => s.status === "validated").length}
-          icon={<CheckSquare className="size-4" />}
+          icon={<CheckSquare className="size-4 text-status-ok-text" />}
           sparklineColor="ok"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Notifications récentes */}
-        <section className="bg-white rounded-2xl border border-border shadow-subtle overflow-hidden">
+        <section className="bg-card rounded-2xl border border-border shadow-subtle overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
-            <div className="flex items-center gap-2">
-              <Bell className="size-4 text-muted-foreground" />
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                <Bell className="size-3.5 text-primary" />
+              </div>
               <h2 className="text-[13px] font-semibold text-foreground">Notifications récentes</h2>
             </div>
             <Link
               href="/portail/notifications"
-              className="text-[12px] text-primary hover:underline flex items-center gap-1"
+              className="flex items-center gap-0.5 text-[12px] text-primary hover:text-primary/80 transition-colors"
             >
-              Voir tout <ArrowRight className="size-3" />
+              Voir tout <ChevronRight className="size-3.5" />
             </Link>
           </div>
 
@@ -160,16 +206,16 @@ export default async function PortailDashboardPage() {
                   key={n.id}
                   className={[
                     "flex items-start gap-3 px-5 py-3 text-[12.5px]",
-                    !n.read_at ? "bg-primary/[0.03]" : "",
+                    !n.read_at ? "bg-primary/[0.025]" : "",
                   ].join(" ")}
                 >
                   {!n.read_at && (
-                    <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
+                    <span className="mt-2 size-1.5 rounded-full bg-primary shrink-0" />
                   )}
                   <div className={!n.read_at ? "" : "ml-[18px]"}>
                     <p className="font-medium text-foreground leading-snug">{n.title}</p>
                     <p className="text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{n.body}</p>
-                    <p className="text-[11px] text-muted-foreground/70 mt-1">{formatRelative(n.created_at)}</p>
+                    <p className="text-[11px] text-muted-foreground/60 mt-1">{formatRelative(n.created_at)}</p>
                   </div>
                 </li>
               ))}
@@ -178,9 +224,11 @@ export default async function PortailDashboardPage() {
         </section>
 
         {/* Activité récente */}
-        <section className="bg-white rounded-2xl border border-border shadow-subtle overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-3.5 border-b border-border/60">
-            <Building2 className="size-4 text-muted-foreground" />
+        <section className="bg-card rounded-2xl border border-border shadow-subtle overflow-hidden">
+          <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-muted/60">
+              <Building2 className="size-3.5 text-muted-foreground" />
+            </div>
             <h2 className="text-[13px] font-semibold text-foreground">Activité récente</h2>
           </div>
 
@@ -202,7 +250,7 @@ export default async function PortailDashboardPage() {
                         {camp?.title ?? "—"}
                       </p>
                       {s.submitted_at && (
-                        <p className="text-[11.5px] text-muted-foreground">
+                        <p className="text-[11.5px] text-muted-foreground mt-0.5">
                           {formatDate(s.submitted_at)}
                         </p>
                       )}

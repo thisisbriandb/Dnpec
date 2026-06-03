@@ -11,7 +11,7 @@ const createCampaignSchema = z
   .object({
     title: z.string().min(3, "Titre requis (3 car. min.)"),
     sector_id: z.string().uuid("Secteur requis"),
-    form_version_id: z.string().uuid("Version de formulaire requise"),
+    form_template_id: z.string().uuid("Formulaire requis"),
     reference_period: z.string().min(2, "Période de référence requise"),
     periodicity: z.enum(["monthly", "quarterly", "annual", "one_off"]),
     opens_at: z.string().min(1, "Date d'ouverture requise"),
@@ -43,7 +43,7 @@ export async function createCampaign(
     .insert({
       title: parsed.data.title,
       sector_id: parsed.data.sector_id,
-      form_version_id: parsed.data.form_version_id,
+      form_template_id: parsed.data.form_template_id,
       reference_period: parsed.data.reference_period,
       periodicity: parsed.data.periodicity,
       opens_at: new Date(parsed.data.opens_at).toISOString(),
