@@ -9,7 +9,7 @@ const PUBLIC_EXACT = ["/", "/login", "/inscription"];
 const AUTH_ONLY_EXACT = ["/login", "/inscription"];
 
 function dashboardForRole(role: string): string {
-  return role === "entreprise" ? "/" : "/direction/dashboard";
+  return role === "entreprise" ? "/portail" : "/direction/dashboard";
 }
 
 export async function proxy(request: NextRequest) {
