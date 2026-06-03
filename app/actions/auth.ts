@@ -58,7 +58,7 @@ const completeRegistrationSchema = z.object({
   ),
 });
 
-export async function completeRegistrationAction(formData: FormData): Promise<{ error?: string }> {
+export async function completeRegistrationAction(formData: FormData): Promise<{ error?: string; success?: boolean }> {
   const parsed = completeRegistrationSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Données invalides" };
 
@@ -105,7 +105,7 @@ export async function completeRegistrationAction(formData: FormData): Promise<{ 
   );
 
   await supabase.auth.signOut();
-  redirect("/login?message=" + encodeURIComponent("Votre demande a été soumise. Attendez la validation DNPEC."));
+  return { success: true };
 }
 
 const loginSchema = z.object({

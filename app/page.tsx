@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BarChart2 } from "lucide-react";
 import { createClient } from "@/app/lib/supabase/server";
+import { signOut } from "@/app/actions/auth";
 
 const features = [
   { n: "01", label: "Sécurisé",  desc: "Données chiffrées"   },
@@ -25,7 +26,7 @@ export default async function HomePage() {
       .single();
 
     const role = profile?.role ?? "entreprise";
-    espaceHref = DIRECTION_ROLES.includes(role) ? "/direction/dashboard" : "/dashboard";
+    espaceHref = DIRECTION_ROLES.includes(role) ? "/direction/dashboard" : "/portail";
   }
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-white">
@@ -41,13 +42,25 @@ export default async function HomePage() {
             <p className="mt-0.5 text-[11px] text-[#6272A4]">Ministère de l&apos;économie, des finances et du budget · République de Guinée</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 rounded-full border border-[#E2E9F3] px-4 py-2">
-          <span className="size-2 rounded-full bg-[#CE1126]" />
-          <span className="size-2 rounded-full bg-[#FCD116]" />
-          <span className="size-2 rounded-full bg-[#009460]" />
-          <span className="ml-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[#0D1B2E]">
-            Plateforme officielle
-          </span>
+        <div className="flex items-center gap-3">
+          {user && (
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="rounded-lg border border-[#E2E9F3] px-4 py-2 text-sm font-medium text-[#6272A4] transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+              >
+                Se déconnecter
+              </button>
+            </form>
+          )}
+          <div className="flex items-center gap-1.5 rounded-full border border-[#E2E9F3] px-4 py-2">
+            <span className="size-2 rounded-full bg-[#CE1126]" />
+            <span className="size-2 rounded-full bg-[#FCD116]" />
+            <span className="size-2 rounded-full bg-[#009460]" />
+            <span className="ml-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[#0D1B2E]">
+              Plateforme officielle
+            </span>
+          </div>
         </div>
       </nav>
 

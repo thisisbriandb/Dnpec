@@ -243,7 +243,11 @@ export default function InscriptionForm({ sectors }: InscriptionFormProps) {
       entries.forEach(([key, val]) => fd.append(key, val));
 
       const result = await completeRegistrationAction(fd);
-      if (result?.error) setServerError(result.error);
+      if (result?.error) {
+        setServerError(result.error);
+      } else if (result?.success) {
+        window.location.href = "/login?message=" + encodeURIComponent("Votre demande a été soumise. La DNPEC examinera votre dossier avant d'activer votre accès.");
+      }
     });
   }
 
