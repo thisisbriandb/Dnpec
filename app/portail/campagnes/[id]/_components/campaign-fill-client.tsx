@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useState, useTransition, useMemo } from "react"
-import { AlertTriangle, CheckCircle2, Clock, Send, Save, Lock } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Clock, Send, Save, Lock, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FormFillPreview, type FormSchema } from "@/app/direction/_components/form-fill-preview"
 import { saveDraft, submitSubmission } from "@/app/actions/submissions"
@@ -48,7 +48,8 @@ export function CampaignFillClient({
   const isReadOnly =
     campaignClosed ||
     submissionStatus === "submitted" ||
-    submissionStatus === "validated"
+    submissionStatus === "validated" ||
+    submissionStatus === "rejected"
 
   const completionRate = useMemo(() => {
     const required = schema.sections.flatMap((s) => s.fields).filter((f) => f.required)
@@ -144,8 +145,23 @@ export function CampaignFillClient({
         <div className="rounded-xl border border-status-warn/30 bg-status-warn-bg px-5 py-4 flex gap-3">
           <AlertTriangle className="size-4 text-status-warn-text shrink-0 mt-0.5" />
           <div>
-            <p className="text-[13px] font-semibold text-status-warn-text">Correction demandée</p>
+            <p className="text-[13px] font-semibold text-status-warn-text">Correction demandée par la DNPEC</p>
             <p className="text-[13px] text-foreground mt-1 leading-relaxed">{rejectionComment}</p>
+            <p className="text-[11px] text-status-warn-text/70 mt-2">Modifiez votre réponse ci-dessous puis soumettez à nouveau.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Bandeau rejeté */}
+      {submissionStatus === "rejected" && (
+        <div className="rounded-xl border border-status-bad/30 bg-status-bad-bg px-5 py-4 flex gap-3">
+          <XCircle className="size-4 text-status-bad-text shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[13px] font-semibold text-status-bad-text">Soumission rejetée par la DNPEC</p>
+            {rejectionComment && (
+              <p className="text-[13px] text-foreground mt-1 leading-relaxed">{rejectionComment}</p>
+            )}
+            <p className="text-[11px] text-status-bad-text/70 mt-2">Cette soumission a été définitivement rejetée. Contactez la DNPEC pour plus d'informations.</p>
           </div>
         </div>
       )}
