@@ -28,19 +28,19 @@ const formSchemaPayload = z.object({
 
 type FormSchemaPayload = z.infer<typeof formSchemaPayload>
 
-/* ── Helper : vérifie qu'aucune campagne active n'utilise ce formulaire ── */
-async function checkNotLocked(
+/* ── Helper : un formulaire publié est verrouillé et ne peut plus être modifié ── */
+async function checkEditable(
   supabase: Awaited<ReturnType<typeof createClient>>,
   templateId: string,
 ): Promise<string | null> {
-  const { count } = await supabase
-    .from("campaigns")
-    .select("id", { count: "exact", head: true })
-    .eq("form_template_id", templateId)
-    .in("status", ["scheduled", "active"])
+  const { data: template } = await supabase
+    .from("form_templates")
+    .select("status")
+    .eq("id", templateId)
+    .single()
 
-  if (count && count > 0) {
-    return "Ce formulaire est verrouillé : il est utilisé par une campagne active ou planifiée."
+  if (template?.status === "published") {
+    return "Ce formulaire est publié : il ne peut plus être modifié."
   }
   return null
 }
@@ -109,8 +109,8 @@ export async function saveFormSchema(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Non authentifié." }
 
-  const lockError = await checkNotLocked(supabase, templateId)
-  if (lockError) return { error: lockError }
+  const editError = await checkEditable(supabase, templateId)
+  if (editError) return { error: editError }
 
   const { error } = await supabase
     .from("form_templates")
@@ -137,8 +137,8 @@ export async function publishFormSchema(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Non authentifié." }
 
-  const lockError = await checkNotLocked(supabase, templateId)
-  if (lockError) return { error: lockError }
+  const editError = await checkEditable(supabase, templateId)
+  if (editError) return { error: editError }
 
   const { error } = await supabase
     .from("form_templates")

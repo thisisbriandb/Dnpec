@@ -64,6 +64,7 @@ export default async function FormulaireDetailPage({
     .in("status", ["scheduled", "active"])
 
   const isLocked    = (activeCampaignCount ?? 0) > 0
+  const isPublished = template.status === "published"
   const statusCfg   = STATUS_CFG[template.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.draft
   const totalFields = schema.sections.reduce((s, sec) => s + sec.fields.length, 0)
 
@@ -117,13 +118,14 @@ export default async function FormulaireDetailPage({
 
           <Link
             href={`/direction/formulaires/${id}/modifier`}
+            title={isPublished ? "Formulaire publié : non modifiable" : undefined}
             className={cn(
               "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-              isLocked
+              isPublished
                 ? "bg-muted text-muted-foreground cursor-not-allowed pointer-events-none"
                 : "bg-primary text-primary-foreground hover:bg-primary/90"
             )}
-            aria-disabled={isLocked}
+            aria-disabled={isPublished}
           >
             <PencilLine className="size-3.5" />
             Modifier le formulaire

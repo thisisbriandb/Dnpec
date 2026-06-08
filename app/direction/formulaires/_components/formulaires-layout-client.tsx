@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   CheckCircle2,
   AlertCircle,
@@ -33,6 +34,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
+import { SectorFormDialog } from "@/app/direction/_components/sector-form-dialog"
 
 /* ── Option normalization ───────────────────────────────────────── */
 function normalizeOption(raw: unknown): { key: string; label: string } {
@@ -85,9 +87,11 @@ export type SectorItem = {
 
 /* ── Main layout ────────────────────────────────────────────────── */
 export function FormulaireLayoutClient({ sectors }: { sectors: SectorItem[] }) {
+  const router = useRouter()
   const [selectedId, setSelectedId] = React.useState<string | null>(
     sectors[0]?.id ?? null
   )
+  const [sectorDialogOpen, setSectorDialogOpen] = React.useState(false)
   const selected = sectors.find((s) => s.id === selectedId) ?? null
 
   const publishedCount    = sectors.filter((s) => s.template?.status === "published").length
@@ -108,83 +112,128 @@ export function FormulaireLayoutClient({ sectors }: { sectors: SectorItem[] }) {
               Un formulaire type par secteur d&apos;activité
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-status-ok-bg text-status-ok-text text-xs font-semibold border border-status-ok/20">
-              <CheckCircle2 className="size-3.5" />
-              {publishedCount} publié{publishedCount !== 1 ? "s" : ""}
-            </span>
-            {draftCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-status-warn-bg text-status-warn-text text-xs font-semibold border border-status-warn/20">
-                <AlertCircle className="size-3.5" />
-                {draftCount} brouillon{draftCount !== 1 ? "s" : ""}
+          {sectors.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-status-ok-bg text-status-ok-text text-xs font-semibold border border-status-ok/20">
+                <CheckCircle2 className="size-3.5" />
+                {publishedCount} publié{publishedCount !== 1 ? "s" : ""}
               </span>
-            )}
-            {unconfiguredCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-status-gray-bg text-status-gray-text text-xs font-semibold border border-status-gray/20">
-                <FileText className="size-3.5" />
-                {unconfiguredCount} non configuré{unconfiguredCount !== 1 ? "s" : ""}
-              </span>
-            )}
-          </div>
+              {draftCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-status-warn-bg text-status-warn-text text-xs font-semibold border border-status-warn/20">
+                  <AlertCircle className="size-3.5" />
+                  {draftCount} brouillon{draftCount !== 1 ? "s" : ""}
+                </span>
+              )}
+              {unconfiguredCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-status-gray-bg text-status-gray-text text-xs font-semibold border border-status-gray/20">
+                  <FileText className="size-3.5" />
+                  {unconfiguredCount} non configuré{unconfiguredCount !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* ── Body ────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      {sectors.length === 0 ? (
+        <NoSectors onAdd={() => setSectorDialogOpen(true)} />
+      ) : (
+        <div className="flex flex-1 overflow-hidden">
 
-        {/* ── Aside ──────────────────────────────────────────── */}
-        <aside
-          className="w-72 shrink-0 border-r border-border bg-card overflow-y-auto flex flex-col"
-          style={{ scrollbarWidth: "thin" }}
-        >
-          {/* Aside header */}
-          <div className="px-4 py-3 border-b border-border shrink-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Secteurs d&apos;activité
-            </p>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-status-ok-text bg-status-ok-bg px-1.5 py-0.5 rounded-md border border-status-ok/20">
-                <span className="size-1.5 rounded-full bg-status-ok" />
-                {publishedCount} publiés
-              </span>
-              {draftCount > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-status-warn-text bg-status-warn-bg px-1.5 py-0.5 rounded-md border border-status-warn/20">
-                  <span className="size-1.5 rounded-full bg-status-warn" />
-                  {draftCount} brouillons
+          {/* ── Aside ──────────────────────────────────────────── */}
+          <aside
+            className="w-72 shrink-0 border-r border-border bg-card overflow-y-auto flex flex-col"
+            style={{ scrollbarWidth: "thin" }}
+          >
+            {/* Aside header */}
+            <div className="px-4 py-3 border-b border-border shrink-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Secteurs d&apos;activité
+              </p>
+              <div className="flex items-center gap-3 mt-2">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-status-ok-text bg-status-ok-bg px-1.5 py-0.5 rounded-md border border-status-ok/20">
+                  <span className="size-1.5 rounded-full bg-status-ok" />
+                  {publishedCount} publiés
                 </span>
-              )}
-              {unconfiguredCount > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-status-gray-text bg-status-gray-bg px-1.5 py-0.5 rounded-md border border-status-gray/20">
-                  <span className="size-1.5 rounded-full bg-status-gray" />
-                  {unconfiguredCount} vides
-                </span>
-              )}
+                {draftCount > 0 && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-status-warn-text bg-status-warn-bg px-1.5 py-0.5 rounded-md border border-status-warn/20">
+                    <span className="size-1.5 rounded-full bg-status-warn" />
+                    {draftCount} brouillons
+                  </span>
+                )}
+                {unconfiguredCount > 0 && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-status-gray-text bg-status-gray-bg px-1.5 py-0.5 rounded-md border border-status-gray/20">
+                    <span className="size-1.5 rounded-full bg-status-gray" />
+                    {unconfiguredCount} vides
+                  </span>
+                )}
+              </div>
             </div>
+
+            {/* Sector list */}
+            <ul className="p-2 space-y-0.5 flex-1">
+              {sectors.map((s) => (
+                <SectorListItem
+                  key={s.id}
+                  sector={s}
+                  isSelected={s.id === selectedId}
+                  onSelect={() => setSelectedId(s.id)}
+                />
+              ))}
+            </ul>
+          </aside>
+
+          {/* ── Content ────────────────────────────────────────── */}
+          <div className="flex-1 overflow-y-auto" style={{ background: "var(--color-surface-2)" }}>
+            {!selected ? (
+              <EmptySelection />
+            ) : selected.template ? (
+              <FormDetail sector={selected} template={selected.template} />
+            ) : (
+              <NoTemplate sector={selected} />
+            )}
           </div>
-
-          {/* Sector list */}
-          <ul className="p-2 space-y-0.5 flex-1">
-            {sectors.map((s) => (
-              <SectorListItem
-                key={s.id}
-                sector={s}
-                isSelected={s.id === selectedId}
-                onSelect={() => setSelectedId(s.id)}
-              />
-            ))}
-          </ul>
-        </aside>
-
-        {/* ── Content ────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto" style={{ background: "var(--color-surface-2)" }}>
-          {!selected ? (
-            <EmptySelection />
-          ) : selected.template ? (
-            <FormDetail sector={selected} template={selected.template} />
-          ) : (
-            <NoTemplate sector={selected} />
-          )}
         </div>
+      )}
+
+      {/* Create-sector dialog — only reachable from the empty state */}
+      <SectorFormDialog
+        open={sectorDialogOpen}
+        onOpenChange={setSectorDialogOpen}
+        sector={null}
+        onSaved={() => {
+          setSectorDialogOpen(false)
+          router.refresh()
+        }}
+      />
+    </div>
+  )
+}
+
+/* ── No sectors at all ──────────────────────────────────────────── */
+function NoSectors({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div className="flex flex-1 items-center justify-center p-12">
+      <div className="text-center max-w-xs">
+        <div className="flex size-20 items-center justify-center rounded-2xl bg-card border-2 border-dashed border-border mx-auto mb-6 shadow-subtle">
+          <Layers className="size-8 text-muted-foreground/30" />
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">
+          Aucun secteur d&apos;activité
+        </h3>
+        <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
+          Les formulaires de collecte sont configurés par secteur. Créez un premier
+          secteur pour pouvoir y associer un formulaire.
+        </p>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-medium"
+        >
+          <Plus className="size-4" />
+          Ajouter un secteur
+        </button>
       </div>
     </div>
   )
@@ -356,13 +405,14 @@ function FormDetail({
             </button>
             <Link
               href={`/direction/formulaires/${template.id}/modifier`}
+              title={isPublished ? "Formulaire publié : non modifiable" : undefined}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors shadow-subtle",
-                isLocked
+                isPublished
                   ? "bg-muted text-muted-foreground cursor-not-allowed pointer-events-none"
                   : "bg-primary text-primary-foreground hover:bg-primary/90"
               )}
-              aria-disabled={isLocked}
+              aria-disabled={isPublished}
             >
               <PencilLine className="size-3.5" />
               Modifier
@@ -405,7 +455,7 @@ function FormDetail({
       {/* ── Form preview (read-only) ───────────────────────── */}
       <div className="flex-1 px-6 py-8">
         {template.schema.sections.length === 0 ? (
-          <EmptySchema templateId={template.id} />
+          <EmptySchema templateId={template.id} editable={!isPublished} />
         ) : (
           <FormPreview
             title={template.title}
@@ -438,7 +488,7 @@ function StatPill({ value, label }: { value: number; label: string }) {
 }
 
 /* ── Empty schema ───────────────────────────────────────────────── */
-function EmptySchema({ templateId }: { templateId: string }) {
+function EmptySchema({ templateId, editable }: { templateId: string; editable: boolean }) {
   return (
     <div className="max-w-2xl mx-auto rounded-2xl border-2 border-dashed border-border p-16 text-center">
       <div className="flex size-14 items-center justify-center rounded-2xl bg-muted/60 mx-auto mb-4">
@@ -448,13 +498,15 @@ function EmptySchema({ templateId }: { templateId: string }) {
       <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
         Ce formulaire n&apos;a pas encore de sections ni de champs configurés.
       </p>
-      <Link
-        href={`/direction/formulaires/${templateId}/modifier`}
-        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-subtle"
-      >
-        <PencilLine className="size-3.5" />
-        Configurer le schéma
-      </Link>
+      {editable && (
+        <Link
+          href={`/direction/formulaires/${templateId}/modifier`}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-subtle"
+        >
+          <PencilLine className="size-3.5" />
+          Configurer le schéma
+        </Link>
+      )}
     </div>
   )
 }

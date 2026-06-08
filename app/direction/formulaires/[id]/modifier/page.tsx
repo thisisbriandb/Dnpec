@@ -46,16 +46,12 @@ export default async function ModifierFormulairePage({
     notFound()
   }
 
+  // Un formulaire publié est verrouillé : il n'est plus modifiable.
+  if (template.status === "published") {
+    redirect(`/direction/formulaires/${id}`)
+  }
+
   const sector = template.sector as unknown as { id: string; name: string } | null
-
-  // Vérifier si une campagne active/planifiée utilise ce formulaire
-  const { count: activeCampaignCount } = await supabase
-    .from("campaigns")
-    .select("id", { count: "exact", head: true })
-    .eq("form_template_id", id)
-    .in("status", ["scheduled", "active"])
-
-  const isLocked = (activeCampaignCount ?? 0) > 0
 
   return (
     <div className="flex flex-col h-full">
@@ -64,8 +60,6 @@ export default async function ModifierFormulairePage({
         templateTitle={template.title}
         sectorName={sector?.name ?? ""}
         schema={(template.schema ?? { sections: [] }) as FormSchemaPayload}
-        isLocked={isLocked}
-        isPublished={template.status === "published"}
       />
     </div>
   )
