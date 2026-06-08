@@ -229,7 +229,7 @@ export async function submitSubmission(
     .single()
   if (!submission) return { error: "Soumission introuvable." }
   if (submission.company_id !== company.id) return { error: "Accès refusé." }
-  if (submission.status !== "draft") return { error: "Cette soumission ne peut plus être soumise." }
+  if (submission.status !== "draft" && submission.status !== "correction_requested") return { error: "Cette soumission ne peut plus être soumise." }
 
   const { error: subError } = await supabase
     .from("submissions")
