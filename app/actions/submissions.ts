@@ -102,6 +102,112 @@ export async function saveDraft(
   return { submissionId }
 }
 
+export async function validateSubmission(
+  submissionId: string,
+): Promise<void | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Non authentifié." }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+  if (!profile || !["super_admin", "analyste"].includes(profile.role)) {
+    return { error: "Accès refusé." }
+  }
+
+  const { data: sub } = await supabase
+    .from("submissions")
+    .select("campaign_id")
+    .eq("id", submissionId)
+    .single()
+  if (!sub) return { error: "Soumission introuvable." }
+
+  const { error } = await supabase
+    .from("submissions")
+    .update({ status: "validated", validated_by: user.id, validated_at: new Date().toISOString(), rejection_comment: null })
+    .eq("id", submissionId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/direction/campagnes/${sub.campaign_id}`)
+  revalidatePath("/direction/campagnes")
+}
+
+export async function rejectSubmission(
+  submissionId: string,
+  comment: string,
+): Promise<void | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Non authentifié." }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+  if (!profile || !["super_admin", "analyste"].includes(profile.role)) {
+    return { error: "Accès refusé." }
+  }
+
+  if (!comment.trim()) return { error: "Un motif de rejet est requis." }
+
+  const { data: sub } = await supabase
+    .from("submissions")
+    .select("campaign_id")
+    .eq("id", submissionId)
+    .single()
+  if (!sub) return { error: "Soumission introuvable." }
+
+  const { error } = await supabase
+    .from("submissions")
+    .update({ status: "rejected", rejection_comment: comment })
+    .eq("id", submissionId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/direction/campagnes/${sub.campaign_id}`)
+  revalidatePath("/direction/campagnes")
+}
+
+export async function requestCorrection(
+  submissionId: string,
+  comment: string,
+): Promise<void | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Non authentifié." }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+  if (!profile || !["super_admin", "analyste"].includes(profile.role)) {
+    return { error: "Accès refusé." }
+  }
+
+  if (!comment.trim()) return { error: "Un message de retour est requis." }
+
+  const { data: sub } = await supabase
+    .from("submissions")
+    .select("campaign_id")
+    .eq("id", submissionId)
+    .single()
+  if (!sub) return { error: "Soumission introuvable." }
+
+  const { error } = await supabase
+    .from("submissions")
+    .update({ status: "correction_requested", rejection_comment: comment })
+    .eq("id", submissionId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/direction/campagnes/${sub.campaign_id}`)
+  revalidatePath("/direction/campagnes")
+  revalidatePath("/portail/campagnes")
+}
+
 export async function submitSubmission(
   submissionId: string,
 ): Promise<void | { error: string }> {

@@ -9,8 +9,10 @@ import {
   ArrowLeft, Send, CircleDot, ArchiveIcon, Ban, Play,
   Users, Clock, CheckCircle2, XCircle, AlertCircle, FileText,
   ChevronUp, ChevronDown, Download, Search, X, Eye, CalendarDays, Check,
+  MessageSquare,
 } from "lucide-react"
 import { updateCampaignStatus } from "@/app/actions/campaigns"
+import { validateSubmission, rejectSubmission, requestCorrection } from "@/app/actions/submissions"
 import { cn } from "@/lib/utils"
 
 /* ── Types ────────────────────────────────────────────────────────── */
@@ -538,6 +540,10 @@ export function CampaignDetailClient({
           tab={asideTab}
           onTabChange={setAsideTab}
           onClose={() => setAside(null)}
+          onSubmissionUpdate={(id, update) => {
+            setAside((prev) => prev && prev.id === id ? { ...prev, ...update } : prev)
+            router.refresh()
+          }}
         />
       )}
     </div>
@@ -644,17 +650,48 @@ function ActionBtn({
 
 /* ── Aside panel ─────────────────────────────────────────────────── */
 function AsidePanel({
-  submission, sections, tab, onTabChange, onClose,
+  submission, sections, tab, onTabChange, onClose, onSubmissionUpdate,
 }: {
   submission: Submission
   sections: FormSection[]
   tab: "answers" | "company"
   onTabChange: (t: "answers" | "company") => void
   onClose: () => void
+  onSubmissionUpdate: (id: string, update: Partial<Submission>) => void
 }) {
   const ans  = submission.answers
   const sc   = SUB_CFG[submission.status]
   const co   = submission.company
+
+  const [activeAction, setActiveAction] = React.useState<"correction" | "reject" | null>(null)
+  const [comment, setComment]           = React.useState("")
+  const [actionError, setActionError]   = React.useState<string | null>(null)
+  const [isPending, startTransition]    = React.useTransition()
+
+  const canAct = submission.status === "submitted" || submission.status === "correction_requested"
+
+  function handleValidate() {
+    setActionError(null)
+    startTransition(async () => {
+      const res = await validateSubmission(submission.id)
+      if (res && "error" in res) { setActionError(res.error); return }
+      onSubmissionUpdate(submission.id, { status: "validated", rejection_comment: null })
+    })
+  }
+
+  function handleCommentAction() {
+    setActionError(null)
+    startTransition(async () => {
+      const res = activeAction === "correction"
+        ? await requestCorrection(submission.id, comment)
+        : await rejectSubmission(submission.id, comment)
+      if (res && "error" in res) { setActionError(res.error); return }
+      const newStatus = activeAction === "correction" ? "correction_requested" : "rejected"
+      onSubmissionUpdate(submission.id, { status: newStatus as SubmissionStatus, rejection_comment: comment })
+      setActiveAction(null)
+      setComment("")
+    })
+  }
 
   return (
     <div
@@ -799,6 +836,92 @@ function AsidePanel({
           </div>
         )}
       </div>
+
+      {/* ── Action footer ─────────────────────────────────────────── */}
+      {canAct && (
+        <div className="shrink-0 border-t border-border bg-card px-5 py-4 space-y-3">
+          {actionError && (
+            <p className="text-[11px] text-red-600 font-medium">{actionError}</p>
+          )}
+
+          {activeAction === null ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleValidate}
+                disabled={isPending}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 text-white px-3 py-2 text-[11px] font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-subtle"
+              >
+                <CheckCircle2 className="size-3.5" />
+                Valider
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveAction("correction"); setActionError(null) }}
+                disabled={isPending}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 px-3 py-2 text-[11px] font-semibold hover:bg-amber-100 disabled:opacity-50 transition-colors shadow-subtle"
+              >
+                <MessageSquare className="size-3.5" />
+                Correction
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveAction("reject"); setActionError(null) }}
+                disabled={isPending}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-[11px] font-semibold hover:bg-red-100 disabled:opacity-50 transition-colors shadow-subtle"
+              >
+                <XCircle className="size-3.5" />
+                Rejeter
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <p className="text-[11px] font-semibold text-foreground">
+                {activeAction === "correction"
+                  ? "Message de correction à envoyer à l'entreprise"
+                  : "Motif de rejet définitif"}
+              </p>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder={
+                  activeAction === "correction"
+                    ? "Décrivez ce que l'entreprise doit corriger ou compléter…"
+                    : "Expliquez pourquoi cette soumission est rejetée…"
+                }
+                rows={3}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs resize-none outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/40"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setActiveAction(null); setComment(""); setActionError(null) }}
+                  className="flex-1 rounded-lg border border-border px-3 py-1.5 text-[11px] font-medium text-foreground hover:bg-muted transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCommentAction}
+                  disabled={isPending || !comment.trim()}
+                  className={cn(
+                    "flex-1 rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white transition-colors disabled:opacity-50",
+                    activeAction === "correction"
+                      ? "bg-amber-500 hover:bg-amber-600"
+                      : "bg-red-600 hover:bg-red-700",
+                  )}
+                >
+                  {isPending
+                    ? "Envoi…"
+                    : activeAction === "correction"
+                      ? "Envoyer le retour"
+                      : "Confirmer le rejet"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
