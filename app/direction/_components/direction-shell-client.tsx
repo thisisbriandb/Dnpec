@@ -13,6 +13,8 @@ import {
   Download,
   Shield,
   Settings,
+  Layers,
+  UserCog,
 } from "lucide-react"
 import { Sidebar, SidebarHeaderDNPEC, type NavGroup } from "@/components/ui/sidebar"
 import { CommandPalette, useCommandPalette } from "@/components/ui/command-palette"
@@ -62,6 +64,18 @@ function buildNavGroups(): NavGroup[] {
       collapsible: true,
       defaultOpen: true,
       items: [
+        {
+          href: "/direction/secteurs",
+          label: "Secteurs",
+          icon: Layers,
+          requiredRoles: ["super_admin", "analyste"],
+        },
+        {
+          href: "/direction/utilisateurs",
+          label: "Utilisateurs DNPEC",
+          icon: UserCog,
+          requiredRoles: ["super_admin"],
+        },
         {
           href: "/direction/audit",
           label: "Audit",
