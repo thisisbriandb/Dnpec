@@ -64,13 +64,12 @@ export async function saveDraft(
 
   const { data: existing } = await supabase
     .from("submissions")
-    .select("id, status, current_version")
+    .select("id, status")
     .eq("campaign_id", campaignId)
     .eq("company_id", company.id)
     .maybeSingle()
 
   let submissionId: string
-  let versionNumber: number
 
   if (!existing) {
     const { data, error } = await supabase
@@ -79,41 +78,23 @@ export async function saveDraft(
         campaign_id:     campaignId,
         company_id:      company.id,
         status:          "draft",
-        current_version: 1,
-        created_by:      user.id,
-      })
-      .select("id, current_version")
-      .single()
-    if (error) return { error: error.message }
-    submissionId  = data.id
-    versionNumber = 1
-  } else if (existing.status === "correction_requested") {
-    const newVersion = existing.current_version + 1
-    const { error } = await supabase
-      .from("submissions")
-      .update({ current_version: newVersion, status: "draft" })
-      .eq("id", existing.id)
-    if (error) return { error: error.message }
-    submissionId  = existing.id
-    versionNumber = newVersion
-  } else {
-    submissionId  = existing.id
-    versionNumber = existing.current_version
-  }
-
-  const { error: versionError } = await supabase
-    .from("submission_versions")
-    .upsert(
-      {
-        submission_id:   submissionId,
-        version_number:  versionNumber,
         answers,
         completion_rate: completionRate,
-        submitted_by:    user.id,
-      },
-      { onConflict: "submission_id,version_number" },
-    )
-  if (versionError) return { error: versionError.message }
+        created_by:      user.id,
+      })
+      .select("id")
+      .single()
+    if (error) return { error: error.message }
+    submissionId = data.id
+  } else {
+    const newStatus = existing.status === "correction_requested" ? "draft" : existing.status
+    const { error } = await supabase
+      .from("submissions")
+      .update({ answers, completion_rate: completionRate, status: newStatus })
+      .eq("id", existing.id)
+    if (error) return { error: error.message }
+    submissionId = existing.id
+  }
 
   revalidatePath(`/portail/campagnes/${campaignId}`)
   revalidatePath("/portail/campagnes")
