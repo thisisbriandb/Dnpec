@@ -3,6 +3,7 @@ import { Building2, Phone, Mail, MapPin, Calendar, Hash, FileText } from "lucide
 import { createClient } from "@/app/lib/supabase/server"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { CompanyActionBar } from "@/app/direction/_components/company-action-bar"
+import { CompanyAnnualReportButton } from "@/app/direction/_components/company-annual-report-button"
 import { CompanyTargetsTable } from "@/app/direction/_components/company-targets-table"
 import { formatNIF, formatDate } from "@/lib/format"
 import type { TargetRow } from "@/app/direction/_components/company-targets-table"
@@ -41,8 +42,9 @@ export default async function EntrepriseDetailPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: company }, { data: targets }] = await Promise.all([
+  const [{ data: company }, { data: targets }, { data: viewerProfile }] = await Promise.all([
     supabase
       .from("companies")
       .select(`
@@ -65,9 +67,14 @@ export default async function EntrepriseDetailPage({
       .eq("company_id", id)
       .order("created_at", { ascending: false })
       .limit(10),
+    user
+      ? supabase.from("profiles").select("role").eq("id", user.id).single()
+      : Promise.resolve({ data: null as { role: string } | null }),
   ])
 
   if (!company) notFound()
+
+  const canGenerateReports = viewerProfile?.role === "super_admin" || viewerProfile?.role === "analyste"
 
   const c = company as unknown as CompanyDetail
   const targetRows = (targets ?? []) as unknown as TargetRow[]
@@ -99,7 +106,10 @@ export default async function EntrepriseDetailPage({
             {c.sector?.name ?? "Secteur inconnu"} · NIF {formatNIF(c.nif)}
           </p>
         </div>
-        <CompanyActionBar companyId={c.id} currentStatus={c.account_status} />
+        <div className="flex items-center gap-2 shrink-0">
+          {canGenerateReports && <CompanyAnnualReportButton companyId={c.id} />}
+          <CompanyActionBar companyId={c.id} currentStatus={c.account_status} />
+        </div>
       </div>
 
       {/* Rejection reason */}

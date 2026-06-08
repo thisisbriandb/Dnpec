@@ -62,8 +62,6 @@ export default async function NouveauFormulairePage({
         templateTitle={`Formulaire de collecte — ${sector.name}`}
         sectorName={sector.name}
         schema={{ sections: [] }}
-        isLocked={false}
-        isPublished={false}
       />
     </div>
   )
