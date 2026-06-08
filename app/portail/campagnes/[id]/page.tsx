@@ -69,23 +69,13 @@ export default async function PortailCampaignDetailPage({
 
   const { data: submission } = await supabase
     .from("submissions")
-    .select("id, status, current_version, submitted_at, rejection_comment")
+    .select("id, status, submitted_at, rejection_comment, answers")
     .eq("campaign_id", campaignId)
     .eq("company_id", company.id)
     .maybeSingle()
 
-  let initialAnswers: Record<string, string | string[]> = {}
-  if (submission) {
-    const { data: version } = await supabase
-      .from("submission_versions")
-      .select("answers")
-      .eq("submission_id", submission.id)
-      .eq("version_number", submission.current_version)
-      .maybeSingle()
-    if (version?.answers) {
-      initialAnswers = version.answers as Record<string, string | string[]>
-    }
-  }
+  const initialAnswers: Record<string, string | string[]> =
+    (submission?.answers as Record<string, string | string[]> | null) ?? {}
 
   const campaignClosed = campaign.status !== "active"
   const days = campaign.closes_at ? daysUntil(campaign.closes_at) : null
