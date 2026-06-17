@@ -105,18 +105,22 @@ function DeadlinePill({ days }: { days: number }) {
 function useNow(intervalMs: number) {
   const [now, setNow] = React.useState<number | null>(null)
   React.useEffect(() => {
-    setNow(Date.now())
-    const id = setInterval(() => setNow(Date.now()), intervalMs)
-    return () => clearInterval(id)
+    const tick = () => setNow(Date.now())
+    const kickoff = setTimeout(tick, 0)
+    const id = setInterval(tick, intervalMs)
+    return () => {
+      clearTimeout(kickoff)
+      clearInterval(id)
+    }
   }, [intervalMs])
   return now
 }
 
-function TimeUnit({ value, unit, color }: { value: number; unit: string; color: string }) {
+function TimeUnit({ value, unit, color }: { value: number | string; unit: string; color: string }) {
   return (
     <div className="flex items-baseline gap-0.5">
       <span className={cn("text-xl font-bold tabular-nums font-mono", color)}>
-        {String(value).padStart(2, "0")}
+        {typeof value === "number" ? String(value).padStart(2, "0") : value}
       </span>
       <span className="text-[10px] font-semibold text-muted-foreground">{unit}</span>
     </div>
@@ -126,11 +130,24 @@ function TimeUnit({ value, unit, color }: { value: number; unit: string; color: 
 function ClosureCountdown({ opensAt, closesAt }: { opensAt: string | null; closesAt: string }) {
   const now = useNow(1000)
 
-  // Avant l'hydratation côté client : valeur stable issue du rendu serveur
-  const closeTime = new Date(closesAt).getTime()
-  const tick = now ?? closeTime
+  // Avant le montage client (SSR / premier paint) : aucune heure fiable encore,
+  // on affiche un placeholder neutre plutôt que de calculer un écart faux.
+  if (now == null) {
+    return (
+      <div>
+        <div className="flex items-baseline gap-2">
+          <TimeUnit value="--" unit="j" color="text-muted-foreground" />
+          <TimeUnit value="--" unit="h" color="text-muted-foreground" />
+          <TimeUnit value="--" unit="m" color="text-muted-foreground" />
+          <TimeUnit value="--" unit="s" color="text-muted-foreground" />
+        </div>
+        <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden" />
+      </div>
+    )
+  }
 
-  const diffMs   = closeTime - tick
+  const closeTime = new Date(closesAt).getTime()
+  const diffMs   = closeTime - now
   const expired  = diffMs <= 0
   const abs      = Math.abs(diffMs)
   const days     = Math.floor(abs / 86_400_000)
@@ -149,7 +166,7 @@ function ClosureCountdown({ opensAt, closesAt }: { opensAt: string | null; close
 
   const openTime = opensAt ? new Date(opensAt).getTime() : null
   const pct = openTime != null && closeTime > openTime
-    ? Math.min(100, Math.max(0, ((tick - openTime) / (closeTime - openTime)) * 100))
+    ? Math.min(100, Math.max(0, ((now - openTime) / (closeTime - openTime)) * 100))
     : null
 
   if (expired) {
@@ -549,7 +566,7 @@ function CampaignDetail({
             </div>
             {c.closes_at && c.status === "active" ? (
               <>
-                <ClosureCountdown closesAt={c.closes_at} />
+                <ClosureCountdown opensAt={c.opens_at} closesAt={c.closes_at} />
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   {fmtDate(c.closes_at)}
                 </p>
