@@ -115,7 +115,7 @@ export function CampaignCreateForm({ sectors, allCompanies }: Props) {
 
   const form = useForm<CampaignValues>({
     resolver: zodResolver(campaignSchema),
-    defaultValues: { target_mode: "sector", target_company_ids: [] },
+    defaultValues: { title: "", target_mode: "sector", target_company_ids: [] },
   })
 
   const title         = form.watch("title")
