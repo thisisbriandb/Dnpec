@@ -8,6 +8,34 @@ import { NOTIF } from "@/lib/notif-types";
 
 const uuidSchema = z.string().uuid();
 
+// Ajoute une entreprise nouvellement validée comme cible des campagnes
+// sectorielles déjà en cours (sinon elle ne voit jamais les campagnes
+// publiées avant sa validation, cf. campaigns_select_direction_or_targeted_company).
+async function syncCompanyToActiveCampaigns(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  companyId: string,
+  sectorId: string,
+): Promise<void> {
+  const { data: campaigns } = await supabase
+    .from("campaigns")
+    .select("id")
+    .eq("sector_id", sectorId)
+    .eq("target_mode", "sector")
+    .in("status", ["scheduled", "active"]);
+
+  if (!campaigns || campaigns.length === 0) return;
+
+  const targets = campaigns.map((c) => ({
+    campaign_id: c.id,
+    company_id: companyId,
+    status: "waiting" as const,
+  }));
+
+  await supabase
+    .from("campaign_targets")
+    .upsert(targets, { onConflict: "campaign_id,company_id", ignoreDuplicates: true });
+}
+
 const rejectSchema = z.object({
   company_id: z.string().uuid(),
   rejection_reason: z.string().min(10, "Le motif doit contenir au moins 10 caractères.").max(500),
@@ -73,9 +101,13 @@ export async function validateCompany(
   const admin = createAdminClient();
   const { data: company } = await admin
     .from("companies")
-    .select("profile_id, name")
+    .select("profile_id, name, sector_id")
     .eq("id", id)
     .single();
+
+  if (company?.sector_id) {
+    await syncCompanyToActiveCampaigns(supabase, id, company.sector_id);
+  }
 
   if (company?.profile_id) {
     await createNotification({
@@ -227,10 +259,15 @@ export async function createCompanyByDirection(
 
   if (error) {
     if (error.code === "23505") {
+      if (error.message.includes("contact_email")) {
+        return { error: "Cet email est déjà utilisé par une autre entreprise." };
+      }
       return { error: "Ce NIF est déjà enregistré dans le système." };
     }
     return { error: error.message };
   }
+
+  await syncCompanyToActiveCampaigns(supabase, data.id, d.sector_id);
 
   revalidatePath("/direction/entreprises");
   return { company_id: data.id };

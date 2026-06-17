@@ -43,7 +43,7 @@ export default async function EntreprisesPage() {
     supabase
       .from("companies")
       .select(`
-        id, nif, rccm, name, contact_email, phone, creation_year,
+        id, nif, rccm, name, contact_email, phone, address, creation_year,
         size, legal_status, created_at,
         sector:sectors(name),
         profile:profiles!profile_id(full_name, email, created_at)

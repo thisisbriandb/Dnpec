@@ -6,6 +6,18 @@ import { createAdminClient, createClient } from "@/app/lib/supabase/server";
 import { createNotificationForDirection } from "./notifications";
 import { NOTIF } from "@/lib/notif-types";
 
+function companyInsertErrorMessage(error: { code?: string; message: string }): string {
+  if (error.code === "23505") {
+    if (error.message.includes("contact_email")) {
+      return "Cet email est déjà utilisé par une autre entreprise.";
+    }
+    if (error.message.includes("nif")) {
+      return "Ce NIF est déjà enregistré dans le système.";
+    }
+  }
+  return error.message;
+}
+
 export async function sendOtpAction(email: string): Promise<{ error?: string }> {
   const parsed = z.string().email().safeParse(email);
   if (!parsed.success) return { error: "Adresse email invalide" };
@@ -93,7 +105,7 @@ export async function completeRegistrationAction(formData: FormData): Promise<{ 
     account_status: "pending",
   }).select("id").single();
 
-  if (companyError) return { error: companyError.message };
+  if (companyError) return { error: companyInsertErrorMessage(companyError) };
 
   // Notifier la direction qu'une nouvelle inscription est en attente
   await createNotificationForDirection(
@@ -194,7 +206,7 @@ export async function signUpCompany(formData: FormData) {
   });
 
   if (companyError) {
-    redirect(`/inscription?error=${encodeURIComponent(companyError.message)}`);
+    redirect(`/inscription?error=${encodeURIComponent(companyInsertErrorMessage(companyError))}`);
   }
 
   redirect("/login?message=Verifiez votre email, puis attendez la validation DNPEC.");
@@ -240,7 +252,7 @@ export async function signUpCompanyAction(formData: FormData): Promise<{ error: 
   });
 
   if (companyError) {
-    return { error: companyError.message };
+    return { error: companyInsertErrorMessage(companyError) };
   }
 
   redirect("/login?message=" + encodeURIComponent("Vérifiez votre email, puis attendez la validation DNPEC."));
