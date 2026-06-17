@@ -133,6 +133,7 @@ export async function validateSubmission(
 
   revalidatePath(`/direction/campagnes/${sub.campaign_id}`)
   revalidatePath("/direction/campagnes")
+  revalidatePath("/direction/validations")
 }
 
 export async function rejectSubmission(
@@ -169,6 +170,7 @@ export async function rejectSubmission(
 
   revalidatePath(`/direction/campagnes/${sub.campaign_id}`)
   revalidatePath("/direction/campagnes")
+  revalidatePath("/direction/validations")
 }
 
 export async function requestCorrection(
@@ -205,6 +207,7 @@ export async function requestCorrection(
 
   revalidatePath(`/direction/campagnes/${sub.campaign_id}`)
   revalidatePath("/direction/campagnes")
+  revalidatePath("/direction/validations")
   revalidatePath("/portail/campagnes")
 }
 

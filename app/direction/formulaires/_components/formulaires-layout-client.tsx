@@ -25,7 +25,6 @@ import {
   Send,
   Building2,
   X,
-  Check,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -35,6 +34,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { SectorFormDialog } from "@/app/direction/_components/sector-form-dialog"
+import { FormFillPreview } from "@/app/direction/_components/form-fill-preview"
 
 /* ── Option normalization ───────────────────────────────────────── */
 function normalizeOption(raw: unknown): { key: string; label: string } {
@@ -99,7 +99,7 @@ export function FormulaireLayoutClient({ sectors }: { sectors: SectorItem[] }) {
   const unconfiguredCount = sectors.filter((s) => !s.template).length
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
 
       {/* ── Page header ─────────────────────────────────────── */}
       <div className="shrink-0 px-6 py-4 border-b border-border bg-card">
@@ -139,53 +139,32 @@ export function FormulaireLayoutClient({ sectors }: { sectors: SectorItem[] }) {
       {sectors.length === 0 ? (
         <NoSectors onAdd={() => setSectorDialogOpen(true)} />
       ) : (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col">
 
-          {/* ── Aside ──────────────────────────────────────────── */}
-          <aside
-            className="w-72 shrink-0 border-r border-border bg-card overflow-y-auto flex flex-col"
-            style={{ scrollbarWidth: "thin" }}
-          >
-            {/* Aside header */}
-            <div className="px-4 py-3 border-b border-border shrink-0">
+          {/* ── Horizontal sector strip ──────────────────────── */}
+          <div className="shrink-0 border-b border-border bg-card">
+            <div className="px-6 pt-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Secteurs d&apos;activité
               </p>
-              <div className="flex items-center gap-3 mt-2">
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-status-ok-text bg-status-ok-bg px-1.5 py-0.5 rounded-md border border-status-ok/20">
-                  <span className="size-1.5 rounded-full bg-status-ok" />
-                  {publishedCount} publiés
-                </span>
-                {draftCount > 0 && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-status-warn-text bg-status-warn-bg px-1.5 py-0.5 rounded-md border border-status-warn/20">
-                    <span className="size-1.5 rounded-full bg-status-warn" />
-                    {draftCount} brouillons
-                  </span>
-                )}
-                {unconfiguredCount > 0 && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-status-gray-text bg-status-gray-bg px-1.5 py-0.5 rounded-md border border-status-gray/20">
-                    <span className="size-1.5 rounded-full bg-status-gray" />
-                    {unconfiguredCount} vides
-                  </span>
-                )}
-              </div>
             </div>
-
-            {/* Sector list */}
-            <ul className="p-2 space-y-0.5 flex-1">
+            <div
+              className="flex items-stretch gap-2 px-6 py-3 overflow-x-auto"
+              style={{ scrollbarWidth: "thin" }}
+            >
               {sectors.map((s) => (
-                <SectorListItem
+                <SectorChip
                   key={s.id}
                   sector={s}
                   isSelected={s.id === selectedId}
                   onSelect={() => setSelectedId(s.id)}
                 />
               ))}
-            </ul>
-          </aside>
+            </div>
+          </div>
 
           {/* ── Content ────────────────────────────────────────── */}
-          <div className="flex-1 overflow-y-auto" style={{ background: "var(--color-surface-2)" }}>
+          <div style={{ background: "var(--color-surface-2)" }}>
             {!selected ? (
               <EmptySelection />
             ) : selected.template ? (
@@ -214,7 +193,7 @@ export function FormulaireLayoutClient({ sectors }: { sectors: SectorItem[] }) {
 /* ── No sectors at all ──────────────────────────────────────────── */
 function NoSectors({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="flex flex-1 items-center justify-center p-12">
+    <div className="flex min-h-[60vh] items-center justify-center p-12">
       <div className="text-center max-w-xs">
         <div className="flex size-20 items-center justify-center rounded-2xl bg-card border-2 border-dashed border-border mx-auto mb-6 shadow-subtle">
           <Layers className="size-8 text-muted-foreground/30" />
@@ -239,8 +218,8 @@ function NoSectors({ onAdd }: { onAdd: () => void }) {
   )
 }
 
-/* ── Sector list item ───────────────────────────────────────────── */
-function SectorListItem({
+/* ── Sector chip (horizontal strip item) ────────────────────────── */
+function SectorChip({
   sector,
   isSelected,
   onSelect,
@@ -272,67 +251,63 @@ function SectorListItem({
     : "text-status-gray-text"
 
   return (
-    <li>
-      <button
-        type="button"
-        onClick={onSelect}
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "shrink-0 w-52 flex flex-col gap-1.5 rounded-xl px-3.5 py-2.5 text-left transition-all duration-150",
+        "focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-1",
+        isSelected
+          ? "bg-accent border border-primary/20 shadow-subtle"
+          : "border border-border hover:bg-muted/60 hover:border-primary/20"
+      )}
+    >
+      {/* Top row: code + status */}
+      <div className="flex items-center gap-2">
+        <span className={cn("block size-2 rounded-full shrink-0", statusDot)} />
+        <span
+          className={cn(
+            "text-[9px] font-bold px-1.5 py-px rounded uppercase tracking-wider",
+            isSelected
+              ? "bg-primary/15 text-primary"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
+          {sector.code}
+        </span>
+        <span className={cn("text-[10px] font-medium ml-auto", statusTextCls)}>
+          {statusLabel}
+        </span>
+      </div>
+
+      {/* Name */}
+      <p
         className={cn(
-          "w-full flex items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150",
-          "focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-1",
-          isSelected
-            ? "bg-accent border border-primary/20 shadow-subtle"
-            : "border border-transparent hover:bg-muted/60 hover:border-border"
+          "text-sm font-medium truncate leading-tight",
+          isSelected ? "text-primary" : "text-foreground"
         )}
       >
-        {/* Status indicator */}
-        <div className="mt-1 shrink-0">
-          <span className={cn("block size-2 rounded-full", statusDot)} />
-        </div>
+        {sector.name}
+      </p>
 
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span
-              className={cn(
-                "text-[9px] font-bold px-1.5 py-px rounded uppercase tracking-wider",
-                isSelected
-                  ? "bg-primary/15 text-primary"
-                  : "bg-muted text-muted-foreground"
-              )}
-            >
-              {sector.code}
+      {/* Meta */}
+      {sector.template ? (
+        <p className="text-[10px] text-muted-foreground truncate">
+          {sectionCount} section{sectionCount !== 1 ? "s" : ""}
+          {" · "}
+          {fieldCount} champ{fieldCount !== 1 ? "s" : ""}
+          {activeCampaigns > 0 && (
+            <span className="ml-1.5 text-status-ok-text font-medium">
+              · {activeCampaigns} campagne{activeCampaigns !== 1 ? "s" : ""}
             </span>
-            <span className={cn("text-[10px] font-medium", statusTextCls)}>
-              {statusLabel}
-            </span>
-          </div>
-          <p
-            className={cn(
-              "text-sm font-medium truncate leading-tight",
-              isSelected ? "text-primary" : "text-foreground"
-            )}
-          >
-            {sector.name}
-          </p>
-          {sector.template ? (
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {sectionCount} section{sectionCount !== 1 ? "s" : ""}
-              {" · "}
-              {fieldCount} champ{fieldCount !== 1 ? "s" : ""}
-              {activeCampaigns > 0 && (
-                <span className="ml-1.5 text-status-ok-text font-medium">
-                  · {activeCampaigns} campagne{activeCampaigns !== 1 ? "s" : ""}
-                </span>
-              )}
-            </p>
-          ) : (
-            <p className="text-[10px] text-muted-foreground mt-0.5 italic">
-              Aucun formulaire configuré
-            </p>
           )}
-        </div>
-      </button>
-    </li>
+        </p>
+      ) : (
+        <p className="text-[10px] text-muted-foreground italic truncate">
+          Aucun formulaire configuré
+        </p>
+      )}
+    </button>
   )
 }
 
@@ -746,10 +721,6 @@ function FormFillModal({
     if (!open) setValues({})
   }, [open])
 
-  function setValue(key: string, value: string | string[]) {
-    setValues((prev) => ({ ...prev, [key]: value }))
-  }
-
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
       <DialogContent
@@ -791,39 +762,16 @@ function FormFillModal({
 
         {/* Scrollable body */}
         <div
-          className="flex-1 overflow-y-auto px-5 py-6 space-y-5"
+          className="flex-1 overflow-y-auto px-5 py-6"
           style={{ background: "var(--color-surface-2)", scrollbarWidth: "thin" }}
         >
-          {/* Title card */}
-          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-medium">
-            <div className="h-2 bg-gradient-to-r from-primary via-primary/80 to-primary/50" />
-            <div className="px-7 py-6">
-              <h3 className="text-2xl font-semibold text-foreground tracking-tight">{title}</h3>
-              {description && (
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{description}</p>
-              )}
-              <p className="text-xs text-muted-foreground/60 mt-4 pt-4 border-t border-border/60">
-                * Les champs marqués d&apos;un astérisque sont obligatoires.
-              </p>
-            </div>
-          </div>
-
-          {schema.sections.length === 0 && (
-            <div className="rounded-xl border-2 border-dashed border-border p-10 text-center bg-card">
-              <FileText className="size-8 text-muted-foreground/25 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Aucune section à afficher.</p>
-            </div>
-          )}
-
-          {schema.sections.map((section, i) => (
-            <FillableSectionBlock
-              key={section.key}
-              section={section}
-              index={i}
-              values={values}
-              onValueChange={setValue}
-            />
-          ))}
+          <FormFillPreview
+            title={title}
+            description={description}
+            schema={schema}
+            initialValues={values}
+            onAnswersChange={setValues}
+          />
         </div>
 
         {/* Footer */}
@@ -856,323 +804,6 @@ function FormFillModal({
   )
 }
 
-/* ── Fillable section block ─────────────────────────────────────── */
-function FillableSectionBlock({
-  section,
-  index,
-  values,
-  onValueChange,
-}: {
-  section: FormSection
-  index: number
-  values: Record<string, string | string[]>
-  onValueChange: (key: string, value: string | string[]) => void
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-subtle">
-      {/* Section header */}
-      <div className="flex items-center gap-4 px-6 py-4 border-b border-border bg-muted/20">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary text-xs font-bold border border-primary/15">
-          {index + 1}
-        </span>
-        <h4 className="text-base font-semibold text-foreground">{section.title}</h4>
-      </div>
-
-      {/* Fields */}
-      <div className="divide-y divide-border/50">
-        {section.fields.map((field) => (
-          <div key={field.key} className="px-6 py-5">
-            <FillableField
-              field={field}
-              value={values[field.key]}
-              onChange={(val) => onValueChange(field.key, val)}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/* ── Fillable field ─────────────────────────────────────────────── */
-function FillableField({
-  field,
-  value,
-  onChange,
-}: {
-  field: FormField
-  value: string | string[] | undefined
-  onChange: (value: string | string[]) => void
-}) {
-  const inputBase =
-    "w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all duration-150"
-
-  /* Label row — same pattern as read-only but no type chip */
-  const Label = () => (
-    <div className="flex items-center gap-2 mb-2.5">
-      <span className="text-sm font-medium text-foreground">{field.label}</span>
-      {field.required && <span className="text-red-500 text-sm leading-none">*</span>}
-      {field.unit && (
-        <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border/60">
-          {field.unit}
-        </span>
-      )}
-    </div>
-  )
-
-  if (field.type === "short_text") {
-    return (
-      <div>
-        <Label />
-        <input
-          type="text"
-          value={(value as string) ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Votre réponse"
-          className={inputBase}
-        />
-      </div>
-    )
-  }
-
-  if (field.type === "long_text") {
-    return (
-      <div>
-        <Label />
-        <textarea
-          value={(value as string) ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          rows={4}
-          placeholder="Développez votre réponse ici…"
-          className={cn(inputBase, "resize-y min-h-[96px]")}
-        />
-      </div>
-    )
-  }
-
-  if (field.type === "integer" || field.type === "decimal") {
-    return (
-      <div>
-        <Label />
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            value={(value as string) ?? ""}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={field.type === "decimal" ? "0.00" : "0"}
-            step={field.type === "decimal" ? "0.01" : "1"}
-            className={cn(inputBase, "flex-1")}
-          />
-          {field.unit && (
-            <span className="shrink-0 inline-flex items-center px-3 py-2.5 rounded-lg border border-input bg-muted text-sm font-mono text-muted-foreground">
-              {field.unit}
-            </span>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  if (field.type === "date") {
-    return (
-      <div>
-        <Label />
-        <input
-          type="date"
-          value={(value as string) ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          className={inputBase}
-        />
-      </div>
-    )
-  }
-
-  if (field.type === "single_select") {
-    const rawOptions = (field.options ?? []) as unknown[]
-    const options    = rawOptions.map(normalizeOption)
-    const strValue   = (value as string) ?? ""
-    return (
-      <div>
-        <Label />
-        {options.length === 0 ? (
-          <p className="text-xs text-muted-foreground/60 italic">Aucune option configurée</p>
-        ) : (
-          <div className="space-y-2.5 mt-1">
-            {options.map(({ key, label }) => {
-              const selected = strValue === key
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => onChange(key)}
-                  className="flex items-center gap-3 text-sm text-foreground w-full text-left group"
-                >
-                  <span
-                    className={cn(
-                      "flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-150",
-                      selected
-                        ? "border-primary bg-primary"
-                        : "border-input bg-background group-hover:border-primary/50"
-                    )}
-                  >
-                    {selected && <span className="size-1.5 rounded-full bg-white" />}
-                  </span>
-                  <span className={selected ? "font-medium text-foreground" : "text-foreground/80"}>
-                    {label}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  if (field.type === "multi_select") {
-    const rawOptions = (field.options ?? []) as unknown[]
-    const options    = rawOptions.map(normalizeOption)
-    const arrValue   = (value as string[]) ?? []
-
-    const toggle = (key: string) =>
-      onChange(
-        arrValue.includes(key)
-          ? arrValue.filter((v) => v !== key)
-          : [...arrValue, key]
-      )
-
-    return (
-      <div>
-        <Label />
-        {options.length === 0 ? (
-          <p className="text-xs text-muted-foreground/60 italic">Aucune option configurée</p>
-        ) : (
-          <div className="space-y-2.5 mt-1">
-            {options.map(({ key, label }) => {
-              const checked = arrValue.includes(key)
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => toggle(key)}
-                  className="flex items-center gap-3 text-sm text-foreground w-full text-left group"
-                >
-                  <span
-                    className={cn(
-                      "flex size-4 shrink-0 items-center justify-center rounded border-2 transition-all duration-150",
-                      checked
-                        ? "border-primary bg-primary"
-                        : "border-input bg-background group-hover:border-primary/50"
-                    )}
-                  >
-                    {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
-                  </span>
-                  <span className={checked ? "font-medium text-foreground" : "text-foreground/80"}>
-                    {label}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  if (field.type === "checkbox") {
-    const checked = (value as string) === "true"
-    return (
-      <button
-        type="button"
-        onClick={() => onChange(checked ? "false" : "true")}
-        className="flex items-center gap-3 text-sm font-medium text-foreground group"
-      >
-        <span
-          className={cn(
-            "flex size-4 shrink-0 items-center justify-center rounded border-2 transition-all duration-150",
-            checked
-              ? "border-primary bg-primary"
-              : "border-input bg-background group-hover:border-primary/50"
-          )}
-        >
-          {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
-        </span>
-        <span>
-          {field.label}
-          {field.required && <span className="text-red-500 ml-0.5">*</span>}
-        </span>
-      </button>
-    )
-  }
-
-  if (field.type === "file") {
-    return (
-      <div>
-        <Label />
-        <label className="flex flex-col items-center justify-center gap-2.5 rounded-xl border-2 border-dashed border-input bg-muted/10 px-4 py-7 cursor-pointer hover:bg-muted/20 hover:border-primary/40 transition-all duration-150">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-muted/50">
-            <Upload className="size-5 text-muted-foreground/50" />
-          </div>
-          <div className="text-center">
-            <span className="text-sm font-medium text-foreground/80">Cliquez pour choisir un fichier</span>
-            <p className="text-xs text-muted-foreground/60 mt-0.5">ou glissez-déposez ici</p>
-          </div>
-          <input type="file" className="sr-only" />
-        </label>
-      </div>
-    )
-  }
-
-  if (field.type === "data_table") {
-    return (
-      <div>
-        <Label />
-        <div className="rounded-xl border border-input overflow-hidden shadow-subtle">
-          <div className="flex bg-muted/60 border-b border-input">
-            {["Colonne 1", "Colonne 2", "Colonne 3"].map((col, i) => (
-              <div
-                key={col}
-                className={cn("flex-1 px-3 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide", i > 0 && "border-l border-input")}
-              >
-                {col}
-              </div>
-            ))}
-          </div>
-          {[0, 1, 2].map((row) => (
-            <div key={row} className="flex border-b border-input last:border-b-0">
-              {[0, 1, 2].map((col) => (
-                <div key={col} className={cn("flex-1", col > 0 && "border-l border-input")}>
-                  <input
-                    type="text"
-                    placeholder="—"
-                    className="w-full px-3 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:bg-primary/5 transition-colors"
-                  />
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground/50 mt-1.5">
-          La structure finale du tableau sera définie dans le formulaire de collecte.
-        </p>
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <Label />
-      <input
-        type="text"
-        value={(value as string) ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Votre réponse"
-        className={inputBase}
-      />
-    </div>
-  )
-}
-
 /* ── No template state ──────────────────────────────────────────── */
 function NoTemplate({ sector }: { sector: SectorItem }) {
   return (
@@ -1198,7 +829,7 @@ function NoTemplate({ sector }: { sector: SectorItem }) {
       </div>
 
       {/* Empty state */}
-      <div className="flex-1 flex items-center justify-center p-12">
+      <div className="flex min-h-[50vh] items-center justify-center p-12">
         <div className="text-center max-w-xs">
           <div className="flex size-20 items-center justify-center rounded-2xl bg-card border-2 border-dashed border-border mx-auto mb-6 shadow-subtle">
             <FileText className="size-8 text-muted-foreground/30" />
@@ -1226,7 +857,7 @@ function NoTemplate({ sector }: { sector: SectorItem }) {
 /* ── Empty initial selection ────────────────────────────────────── */
 function EmptySelection() {
   return (
-    <div className="flex items-center justify-center h-full p-10">
+    <div className="flex min-h-[60vh] items-center justify-center p-10">
       <div className="text-center">
         <div className="flex size-14 items-center justify-center rounded-2xl bg-card border border-border mx-auto mb-4 shadow-subtle">
           <Settings className="size-6 text-muted-foreground/30" />

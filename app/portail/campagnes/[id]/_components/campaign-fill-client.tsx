@@ -112,34 +112,6 @@ export function CampaignFillClient({
 
   return (
     <div className="space-y-5">
-      {/* Progress bar */}
-      {!isReadOnly && (
-        <div className="rounded-xl border border-border bg-card shadow-subtle px-5 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[12px] font-medium text-muted-foreground">
-              Champs obligatoires remplis
-            </span>
-            <span
-              className={cn(
-                "text-[13px] font-semibold tabular-nums",
-                completionRate === 100 ? "text-status-ok-text" : "text-foreground",
-              )}
-            >
-              {completionRate} %
-            </span>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-300",
-                completionRate === 100 ? "bg-status-ok" : "bg-primary",
-              )}
-              style={{ width: `${completionRate}%` }}
-            />
-          </div>
-        </div>
-      )}
-
       {/* Bandeau correction demandée */}
       {submissionStatus === "correction_requested" && rejectionComment && (
         <div className="rounded-xl border border-status-warn/30 bg-status-warn-bg px-5 py-4 flex gap-3">

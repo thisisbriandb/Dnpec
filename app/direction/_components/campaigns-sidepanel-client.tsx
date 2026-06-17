@@ -74,6 +74,144 @@ function progressColor(rate: number) {
   return               { bar: "#f59e0b", text: "text-amber-600"   }
 }
 
+/* ── Deadline pill ──────────────────────────────────────────────── */
+function DeadlinePill({ days }: { days: number }) {
+  if (days < 0)
+    return (
+      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+        Expirée
+      </span>
+    )
+  if (days <= 3)
+    return (
+      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-status-bad-bg text-status-bad-text ring-1 ring-status-bad/20 shrink-0">
+        J‑{days}
+      </span>
+    )
+  if (days <= 7)
+    return (
+      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-status-warn-bg text-status-warn-text shrink-0">
+        J‑{days}
+      </span>
+    )
+  return (
+    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+      J‑{days}
+    </span>
+  )
+}
+
+/* ── Closure countdown chrono (minuteur live + progression) ─────── */
+function useNow(intervalMs: number) {
+  const [now, setNow] = React.useState<number | null>(null)
+  React.useEffect(() => {
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), intervalMs)
+    return () => clearInterval(id)
+  }, [intervalMs])
+  return now
+}
+
+function TimeUnit({ value, unit, color }: { value: number; unit: string; color: string }) {
+  return (
+    <div className="flex items-baseline gap-0.5">
+      <span className={cn("text-xl font-bold tabular-nums font-mono", color)}>
+        {String(value).padStart(2, "0")}
+      </span>
+      <span className="text-[10px] font-semibold text-muted-foreground">{unit}</span>
+    </div>
+  )
+}
+
+function ClosureCountdown({ opensAt, closesAt }: { opensAt: string | null; closesAt: string }) {
+  const now = useNow(1000)
+
+  // Avant l'hydratation côté client : valeur stable issue du rendu serveur
+  const closeTime = new Date(closesAt).getTime()
+  const tick = now ?? closeTime
+
+  const diffMs   = closeTime - tick
+  const expired  = diffMs <= 0
+  const abs      = Math.abs(diffMs)
+  const days     = Math.floor(abs / 86_400_000)
+  const hours    = Math.floor((abs % 86_400_000) / 3_600_000)
+  const minutes  = Math.floor((abs % 3_600_000) / 60_000)
+  const seconds  = Math.floor((abs % 60_000) / 1000)
+
+  const color = expired ? "text-muted-foreground"
+    : days <= 3 ? "text-red-600"
+    : days <= 7 ? "text-orange-500"
+    : "text-foreground"
+  const barColor = expired ? "bg-muted-foreground"
+    : days <= 3 ? "bg-red-500"
+    : days <= 7 ? "bg-orange-500"
+    : "bg-emerald-500"
+
+  const openTime = opensAt ? new Date(opensAt).getTime() : null
+  const pct = openTime != null && closeTime > openTime
+    ? Math.min(100, Math.max(0, ((tick - openTime) / (closeTime - openTime)) * 100))
+    : null
+
+  if (expired) {
+    return <p className={cn("text-lg font-bold", color)}>Clôturée</p>
+  }
+
+  return (
+    <div>
+      <div className="flex items-baseline gap-2">
+        <TimeUnit value={days} unit="j" color={color} />
+        <TimeUnit value={hours} unit="h" color={color} />
+        <TimeUnit value={minutes} unit="m" color={color} />
+        <TimeUnit value={seconds} unit="s" color={color} />
+      </div>
+      {pct != null && (
+        <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn("h-full rounded-full transition-all duration-1000 ease-linear", barColor)}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Circular progress ring ─────────────────────────────────────── */
+function CircleProgress({ pct }: { pct: number }) {
+  const size    = 88
+  const strokeW = 7
+  const r       = (size - strokeW) / 2
+  const c       = 2 * Math.PI * r
+  const offset  = c - (pct / 100) * c
+  const color   = pct >= 80 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
+
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke="var(--border)" strokeWidth={strokeW}
+        />
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke={color} strokeWidth={strokeW}
+          strokeDasharray={c} strokeDashoffset={offset}
+          strokeLinecap="round"
+          style={{ transition: "stroke-dashoffset 0.6s ease" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
+        <span className="text-lg font-bold tabular-nums leading-none" style={{ color }}>
+          {pct}%
+        </span>
+        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none">
+          réponse
+        </span>
+      </div>
+    </div>
+  )
+}
+
 /* ── Campaign list item ─────────────────────────────────────────── */
 function CampaignListItem({
   c,
@@ -89,7 +227,6 @@ function CampaignListItem({
   const responded = c.targets.validated + c.targets.submitted
   const rate      = c.targets.total > 0 ? Math.round((responded / c.targets.total) * 100) : 0
   const days      = c.closes_at ? daysUntil(c.closes_at) : null
-  const isUrgent  = days !== null && days <= 7 && c.status === "active"
   const pColor    = progressColor(rate)
 
   return (
@@ -97,65 +234,62 @@ function CampaignListItem({
       type="button"
       onClick={onSelect}
       className={cn(
-        "w-full flex items-stretch text-left transition-all duration-150 group",
+        "w-full text-left transition-all duration-150 group rounded-lg overflow-hidden border-2 mb-1.5",
         isSelected
-          ? "bg-accent border-r-2 border-primary"
-          : "hover:bg-muted/40 border-r-2 border-transparent",
+          ? "border-primary/40 bg-card shadow-sm"
+          : "border-border bg-card/60 hover:bg-card hover:border-border-strong",
       )}
     >
-      {/* Status strip */}
-      <div className={cn("w-[3px] shrink-0", cfg.strip)} />
+      <div className="flex items-stretch">
+        {/* Status strip */}
+        <div className={cn("w-1 shrink-0", cfg.strip)} />
 
-      <div className="flex-1 px-3 py-2.5 min-w-0">
-        {/* Row 1 : sector chip + deadline */}
-        <div className="flex items-center justify-between gap-1 mb-1">
-          <span className={cn(
-            "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0",
-            chip,
-          )}>
-            {c.sector.code}
-          </span>
-
-          {c.status === "active" && days !== null ? (
+        <div className="flex-1 px-2.5 py-2.5 min-w-0">
+          {/* Row 1 : sector chip + deadline */}
+          <div className="flex items-center justify-between gap-1 mb-1.5">
             <span className={cn(
-              "text-[10px] font-bold tabular-nums shrink-0",
-              isUrgent ? (days <= 3 ? "text-red-600" : "text-orange-500") : "text-muted-foreground/60",
+              "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0",
+              chip,
             )}>
-              J‑{days}
+              {c.sector.code}
             </span>
-          ) : c.status === "scheduled" && c.opens_at ? (
-            <span className="text-[10px] text-blue-500 font-medium shrink-0">
-              J+{Math.abs(daysUntil(c.opens_at))}
-            </span>
-          ) : null}
-        </div>
 
-        {/* Row 2 : title */}
-        <p className={cn(
-          "text-[12px] font-medium leading-tight line-clamp-2",
-          isSelected ? "text-foreground" : "text-foreground/80 group-hover:text-foreground",
-        )}>
-          {c.title}
-        </p>
-
-        {/* Row 3 : progress bar (active/closed only) */}
-        {(c.status === "active" || c.status === "closed") && c.targets.total > 0 ? (
-          <div className="flex items-center gap-1.5 mt-1.5">
-            <div className="h-1 flex-1 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${rate}%`, backgroundColor: pColor.bar }}
-              />
-            </div>
-            <span className="text-[10px] tabular-nums text-muted-foreground/60 shrink-0 font-medium">
-              {responded}/{c.targets.total}
-            </span>
+            {c.status === "active" && days !== null ? (
+              <DeadlinePill days={days} />
+            ) : c.status === "scheduled" && c.opens_at ? (
+              <span className="text-[10px] text-blue-500 font-medium shrink-0">
+                J+{Math.abs(daysUntil(c.opens_at))}
+              </span>
+            ) : null}
           </div>
-        ) : (
-          <p className="text-[10px] text-muted-foreground/50 mt-1">
-            {c.reference_period} · {PERIODICITY[c.periodicity] ?? c.periodicity}
+
+          {/* Row 2 : title */}
+          <p className={cn(
+            "text-[12px] font-medium leading-tight line-clamp-2 mb-2",
+            isSelected ? "text-foreground" : "text-foreground/80 group-hover:text-foreground",
+          )}>
+            {c.title}
           </p>
-        )}
+
+          {/* Row 3 : progress bar (active/closed only) */}
+          {(c.status === "active" || c.status === "closed") && c.targets.total > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <div className="h-1 flex-1 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${rate}%`, backgroundColor: pColor.bar }}
+                />
+              </div>
+              <span className="text-[10px] tabular-nums text-muted-foreground/60 shrink-0 font-medium">
+                {responded}/{c.targets.total}
+              </span>
+            </div>
+          ) : (
+            <p className="text-[10px] text-muted-foreground/50">
+              {c.reference_period} · {PERIODICITY[c.periodicity] ?? c.periodicity}
+            </p>
+          )}
+        </div>
       </div>
     </button>
   )
@@ -184,14 +318,16 @@ function StatusGroup({
           {campaigns.length}
         </span>
       </div>
-      {campaigns.map((c) => (
-        <CampaignListItem
-          key={c.id}
-          c={c}
-          isSelected={c.id === selectedId}
-          onSelect={() => onSelect(c.id)}
-        />
-      ))}
+      <div className="px-2 pt-1.5">
+        {campaigns.map((c) => (
+          <CampaignListItem
+            key={c.id}
+            c={c}
+            isSelected={c.id === selectedId}
+            onSelect={() => onSelect(c.id)}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -212,7 +348,6 @@ function CampaignDetail({
   const responded  = c.targets.validated + c.targets.submitted
   const waiting    = c.targets.total - responded
   const rate       = c.targets.total > 0 ? Math.round((responded / c.targets.total) * 100) : 0
-  const pColor     = progressColor(rate)
   const days       = c.closes_at ? daysUntil(c.closes_at) : null
   const isUrgent   = days !== null && days <= 7 && c.status === "active"
 
@@ -348,39 +483,35 @@ function CampaignDetail({
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5" style={{ scrollbarWidth: "thin" }}>
 
         {/* Progress section */}
-        <div className="rounded-xl border border-border bg-card p-4 shadow-subtle space-y-3">
-          <div className="flex items-end justify-between">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-              Progression
-            </p>
-            <span className={cn("text-2xl font-bold tabular-nums", c.targets.total === 0 ? "text-muted-foreground/40" : pColor.text)}>
-              {c.targets.total === 0 ? "—" : `${rate} %`}
-            </span>
-          </div>
-
+        <div className="rounded-xl border border-border bg-card p-4 shadow-subtle">
           {c.targets.total > 0 ? (
-            <>
-              <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${rate}%`, backgroundColor: pColor.bar }}
-                />
+            <div className="flex items-center gap-5">
+              <CircleProgress pct={rate} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground mb-0.5">
+                  {responded} / {c.targets.total} entreprises
+                </p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  ont soumis ou validé leurs données
+                </p>
+                <div className="flex gap-4 flex-wrap">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Validées</span>
+                    <span className="text-sm font-bold text-emerald-600 tabular-nums">{c.targets.validated}</span>
+                  </div>
+                  <div className="w-px bg-border self-stretch" />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Soumises</span>
+                    <span className="text-sm font-bold text-blue-600 tabular-nums">{c.targets.submitted}</span>
+                  </div>
+                  <div className="w-px bg-border self-stretch" />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Restantes</span>
+                    <span className="text-sm font-bold text-muted-foreground tabular-nums">{waiting}</span>
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <div className="text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Validées</p>
-                  <p className="text-lg font-bold tabular-nums text-emerald-600">{c.targets.validated}</p>
-                </div>
-                <div className="text-center border-x border-border">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Soumises</p>
-                  <p className="text-lg font-bold tabular-nums text-blue-600">{c.targets.submitted}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Restantes</p>
-                  <p className="text-lg font-bold tabular-nums text-muted-foreground">{waiting}</p>
-                </div>
-              </div>
-            </>
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground/60 italic text-center py-2">
               Aucune entreprise ciblée pour le moment
@@ -416,16 +547,11 @@ function CampaignDetail({
                 {c.status === "active" ? "Clôture" : "Délai"}
               </p>
             </div>
-            {days !== null && c.status === "active" ? (
+            {c.closes_at && c.status === "active" ? (
               <>
-                <p className={cn(
-                  "text-2xl font-bold tabular-nums",
-                  isUrgent ? (days <= 3 ? "text-red-600" : "text-orange-500") : "text-foreground",
-                )}>
-                  J‑{days}
-                </p>
+                <ClosureCountdown closesAt={c.closes_at} />
                 <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {c.closes_at ? fmtDate(c.closes_at) : "—"}
+                  {fmtDate(c.closes_at)}
                 </p>
               </>
             ) : c.closes_at ? (
@@ -717,14 +843,16 @@ export function CampaignsSidepanelClient({ campaigns }: { campaigns: CampaignIte
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Passées</span>
                       <span className="text-[10px] text-muted-foreground/40 tabular-nums ml-auto">{closed.length}</span>
                     </div>
-                    {closed.map((c) => (
-                      <CampaignListItem
-                        key={c.id}
-                        c={c}
-                        isSelected={c.id === selectedId}
-                        onSelect={() => setSelectedId(c.id)}
-                      />
-                    ))}
+                    <div className="px-2 pt-1.5">
+                      {closed.map((c) => (
+                        <CampaignListItem
+                          key={c.id}
+                          c={c}
+                          isSelected={c.id === selectedId}
+                          onSelect={() => setSelectedId(c.id)}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
               </>

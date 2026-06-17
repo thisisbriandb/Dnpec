@@ -4,8 +4,17 @@ import * as React from "react"
 import {
   Upload, Calendar, Hash, AlignLeft, AlignJustify,
   ToggleLeft, ListChecks, List, Table2, Check, FileText,
+  ChevronLeft, ChevronRight, AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+/* ── Field emptiness ────────────────────────────────────────────── */
+function isFieldEmpty(value: string | string[] | undefined): boolean {
+  if (value === undefined || value === null) return true
+  return Array.isArray(value) ? value.length === 0 : value.trim() === ""
+}
 
 /* ── Types ──────────────────────────────────────────────────────── */
 export type FormField = {
@@ -358,12 +367,14 @@ function FillableSectionBlock({
   values,
   onValueChange,
   readOnly = false,
+  invalidKeys,
 }: {
   section: FormSection
   index: number
   values: Record<string, string | string[]>
   onValueChange: (key: string, value: string | string[]) => void
   readOnly?: boolean
+  invalidKeys?: Set<string>
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-subtle">
@@ -377,16 +388,22 @@ function FillableSectionBlock({
         </span>
       </div>
       <div className="divide-y divide-border/50">
-        {section.fields.map((field) => (
-          <div key={field.key} className="px-6 py-5">
-            <FillableField
-              field={field}
-              value={values[field.key]}
-              onChange={(val) => onValueChange(field.key, val)}
-              readOnly={readOnly}
-            />
-          </div>
-        ))}
+        {section.fields.map((field) => {
+          const invalid = invalidKeys?.has(field.key) ?? false
+          return (
+            <div key={field.key} className={cn("px-6 py-5", invalid && "bg-destructive/5")}>
+              <FillableField
+                field={field}
+                value={values[field.key]}
+                onChange={(val) => onValueChange(field.key, val)}
+                readOnly={readOnly}
+              />
+              {invalid && (
+                <p className="mt-2 text-xs font-medium text-destructive">Ce champ est obligatoire.</p>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -411,6 +428,15 @@ export function FormFillPreview({
   const [values, setValues] = React.useState<Record<string, string | string[]>>(
     initialValues ?? {}
   )
+  const [currentStep, setCurrentStep] = React.useState(0)
+  const [blockedAttempt, setBlockedAttempt] = React.useState(false)
+  const [schemaForStep, setSchemaForStep] = React.useState(schema)
+
+  if (schema !== schemaForStep) {
+    setSchemaForStep(schema)
+    setCurrentStep(0)
+    setBlockedAttempt(false)
+  }
 
   function setValue(key: string, value: string | string[]) {
     setValues((prev) => {
@@ -418,6 +444,34 @@ export function FormFillPreview({
       onAnswersChange?.(next)
       return next
     })
+  }
+
+  const sections = schema.sections
+  const step = Math.min(currentStep, Math.max(sections.length - 1, 0))
+  const currentSection = sections[step]
+
+  const completionPct = React.useMemo(() => {
+    const required = sections.flatMap((s) => s.fields).filter((f) => f.required)
+    if (required.length === 0) return 100
+    const filled = required.filter((f) => !isFieldEmpty(values[f.key]))
+    return Math.round((filled.length / required.length) * 100)
+  }, [sections, values])
+
+  const missingInCurrentSection = React.useMemo(() => {
+    if (!currentSection) return new Set<string>()
+    return new Set(
+      currentSection.fields.filter((f) => f.required && isFieldEmpty(values[f.key])).map((f) => f.key)
+    )
+  }, [currentSection, values])
+
+  function goToStep(target: number) {
+    if (target < 0 || target >= sections.length || target === step) return
+    if (!readOnly && target > step && missingInCurrentSection.size > 0) {
+      setBlockedAttempt(true)
+      return
+    }
+    setBlockedAttempt(false)
+    setCurrentStep(target)
   }
 
   return (
@@ -436,22 +490,118 @@ export function FormFillPreview({
         </div>
       </div>
 
-      {schema.sections.length === 0 ? (
+      {sections.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-border p-10 text-center bg-card">
           <FileText className="size-8 text-muted-foreground/25 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">Aucune section configurée dans ce formulaire.</p>
         </div>
       ) : (
-        schema.sections.map((section, i) => (
+        <>
+          {/* Progress + step tabs */}
+          <div className="rounded-2xl border border-border bg-card shadow-subtle overflow-hidden">
+            <div className="px-6 py-4 border-b border-border/70">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Étape {step + 1} / {sections.length}
+                </span>
+                <span
+                  className={cn(
+                    "text-xs font-semibold tabular-nums",
+                    completionPct === 100 ? "text-status-ok-text" : "text-foreground"
+                  )}
+                >
+                  {completionPct}%
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-300",
+                    completionPct === 100 ? "bg-status-ok" : "bg-primary"
+                  )}
+                  style={{ width: `${completionPct}%` }}
+                />
+              </div>
+            </div>
+            <div className="overflow-x-auto px-2" style={{ scrollbarWidth: "thin" }}>
+              <Tabs value={String(step)} onValueChange={(v) => goToStep(Number(v))}>
+                <TabsList variant="line" className="h-auto w-full justify-start gap-4 px-2 py-0">
+                  {sections.map((section, i) => {
+                    const sectionDone = section.fields
+                      .filter((f) => f.required)
+                      .every((f) => !isFieldEmpty(values[f.key]))
+                    return (
+                      <TabsTrigger
+                        key={section.key}
+                        value={String(i)}
+                        className="shrink-0 gap-1.5 px-1 py-2.5 whitespace-nowrap"
+                      >
+                        <span
+                          className={cn(
+                            "flex size-4.5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                            i === step
+                              ? "bg-primary text-primary-foreground"
+                              : sectionDone
+                                ? "bg-status-ok/15 text-status-ok-text"
+                                : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {sectionDone && i !== step ? <Check className="size-2.5" strokeWidth={3} /> : i + 1}
+                        </span>
+                        {section.title}
+                      </TabsTrigger>
+                    )
+                  })}
+                </TabsList>
+              </Tabs>
+            </div>
+          </div>
+
+          {/* Blocked navigation warning */}
+          {blockedAttempt && missingInCurrentSection.size > 0 && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <AlertTriangle className="size-4 shrink-0" />
+              Veuillez renseigner tous les champs obligatoires de cette section avant de continuer.
+            </div>
+          )}
+
+          {/* Current section */}
           <FillableSectionBlock
-            key={section.key}
-            section={section}
-            index={i}
+            key={currentSection.key}
+            section={currentSection}
+            index={step}
             values={values}
             onValueChange={setValue}
             readOnly={readOnly}
+            invalidKeys={blockedAttempt ? missingInCurrentSection : undefined}
           />
-        ))
+
+          {/* Step navigation */}
+          <div className="flex items-center justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={step === 0}
+              onClick={() => goToStep(step - 1)}
+            >
+              <ChevronLeft className="size-3.5" />
+              Précédent
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Section {step + 1} sur {sections.length}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              disabled={step === sections.length - 1}
+              onClick={() => goToStep(step + 1)}
+            >
+              Suivant
+              <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
+        </>
       )}
     </div>
   )

@@ -59,7 +59,9 @@ interface InscriptionQueueProps {
 export function InscriptionQueueClient({ pending, onItemRemoved }: InscriptionQueueProps) {
   const [isPending, startTransition] = useTransition()
   const [rejectingId, setRejectingId] = React.useState<string | null>(null)
+  const [validatingId, setValidatingId] = React.useState<string | null>(null)
   const [data, setData] = React.useState<Company[]>(pending)
+  const validatingCompany = data.find((c) => c.id === validatingId) ?? null
 
   const rejectForm = useForm<RejectFormValues>({
     resolver: zodResolver(rejectFormSchema),
@@ -77,6 +79,13 @@ export function InscriptionQueueClient({ pending, onItemRemoved }: InscriptionQu
         onItemRemoved?.()
       }
     })
+  }
+
+  function handleValidateConfirm() {
+    if (!validatingId) return
+    const id = validatingId
+    setValidatingId(null)
+    handleValidate(id)
   }
 
   function handleRejectOpen(id: string) {
@@ -144,7 +153,7 @@ export function InscriptionQueueClient({ pending, onItemRemoved }: InscriptionQu
                 <Button
                   size="sm"
                   disabled={isPending}
-                  onClick={() => handleValidate(company.id)}
+                  onClick={() => setValidatingId(company.id)}
                   className="gap-1.5 bg-status-ok text-white hover:bg-status-ok/90"
                 >
                   <CheckCircle className="size-3.5" />
@@ -206,6 +215,33 @@ export function InscriptionQueueClient({ pending, onItemRemoved }: InscriptionQu
           </div>
         ))}
       </div>
+
+      {/* Validate Confirmation Dialog */}
+      <Dialog open={validatingId !== null} onOpenChange={(open) => { if (!open) setValidatingId(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Valider l&apos;inscription</DialogTitle>
+            <DialogDescription>
+              {validatingCompany
+                ? `Confirmez-vous la validation de l'inscription de « ${validatingCompany.name} » ? L'entreprise sera notifiée et pourra accéder à la plateforme.`
+                : "Confirmez-vous la validation de cette inscription ?"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setValidatingId(null)}>
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={handleValidateConfirm}
+              className="bg-status-ok text-white hover:bg-status-ok/90"
+            >
+              Confirmer la validation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject Dialog */}
       <Dialog open={rejectingId !== null} onOpenChange={(open) => { if (!open) setRejectingId(null) }}>
