@@ -72,6 +72,22 @@ export const JOB_STATUS: Record<JobStatus, StatusConfig> = {
   failed:    { variant: "bad",  label: "Échoué" },
 }
 
+/* ── Company labels ───────────────────────────────────────────── */
+export const SIZE_LABELS: Record<string, string> = {
+  tpe: "TPE",
+  pme: "PME",
+  grande_entreprise: "Grande entreprise",
+}
+
+export const LEGAL_LABELS: Record<string, string> = {
+  sa: "SA",
+  sarl: "SARL",
+  suarl: "SUARL",
+  gie: "GIE",
+  public: "Entreprise publique",
+  autre: "Autre",
+}
+
 /* ── Role labels ──────────────────────────────────────────────── */
 export type AppRole = "super_admin" | "analyste" | "agent_saisie" | "entreprise"
 

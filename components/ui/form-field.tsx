@@ -236,7 +236,9 @@ function FormSelect<T extends FieldValues>({
               id={name}
               aria-invalid={!!fieldState.error}
             >
-              <SelectValue placeholder={placeholder} />
+              <SelectValue placeholder={placeholder}>
+                {(value: string) => options.find((o) => o.value === value)?.label ?? placeholder}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {options.map((opt) => (

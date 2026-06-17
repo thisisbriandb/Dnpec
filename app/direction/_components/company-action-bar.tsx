@@ -32,6 +32,7 @@ interface Props {
 export function CompanyActionBar({ companyId, currentStatus }: Props) {
   const [isPending, startTransition] = useTransition()
   const [rejectOpen, setRejectOpen] = React.useState(false)
+  const [validateConfirmOpen, setValidateConfirmOpen] = React.useState(false)
   const [status, setStatus] = React.useState(currentStatus)
 
   const form = useForm<RejectValues>({
@@ -76,7 +77,7 @@ export function CompanyActionBar({ companyId, currentStatus }: Props) {
         {(status === "pending" || status === "suspended") && (
           <Button
             size="sm"
-            onClick={handleValidate}
+            onClick={() => setValidateConfirmOpen(true)}
             disabled={isPending}
             className="gap-1.5 bg-status-ok text-white hover:bg-status-ok/90"
           >
@@ -138,6 +139,35 @@ export function CompanyActionBar({ companyId, currentStatus }: Props) {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Validate Confirmation Dialog */}
+      <Dialog open={validateConfirmOpen} onOpenChange={setValidateConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {status === "suspended" ? "Réactiver l'entreprise" : "Valider l'inscription"}
+            </DialogTitle>
+            <DialogDescription>
+              {status === "suspended"
+                ? "Confirmez-vous la réactivation de cette entreprise ? Elle retrouvera l'accès à la plateforme."
+                : "Confirmez-vous la validation de cette inscription ? L'entreprise sera notifiée et pourra accéder à la plateforme."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setValidateConfirmOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={() => { setValidateConfirmOpen(false); handleValidate() }}
+              className="bg-status-ok text-white hover:bg-status-ok/90"
+            >
+              {status === "suspended" ? "Confirmer la réactivation" : "Confirmer la validation"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

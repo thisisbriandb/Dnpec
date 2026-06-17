@@ -183,7 +183,7 @@ export default async function CampagnesPage() {
           {/* Alerte soumissions */}
           {pendingCount > 0 ? (
             <Link
-              href="/direction/soumissions"
+              href="/direction/validations"
               className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100 hover:border-amber-300 transition-colors shadow-subtle"
             >
               <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
@@ -212,7 +212,7 @@ export default async function CampagnesPage() {
               Formulaires
             </Link>
             <Link
-              href="/direction/soumissions"
+              href="/direction/validations"
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors shadow-subtle",
                 pendingCount > 0

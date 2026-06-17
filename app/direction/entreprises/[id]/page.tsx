@@ -5,25 +5,14 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { CompanyActionBar } from "@/app/direction/_components/company-action-bar"
 import { CompanyAnnualReportButton } from "@/app/direction/_components/company-annual-report-button"
 import { CompanyTargetsTable } from "@/app/direction/_components/company-targets-table"
+import { CompanyTags } from "@/app/direction/_components/company-tags"
+import { MissingFieldAlert } from "@/app/direction/_components/missing-field-alert"
 import { formatNIF, formatDate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import type { TargetRow } from "@/app/direction/_components/company-targets-table"
+import * as React from "react"
 
 export const dynamic = "force-dynamic"
-
-const SIZE_LABELS: Record<string, string> = {
-  tpe: "Très petite entreprise (TPE)",
-  pme: "Petite et moyenne entreprise (PME)",
-  grande_entreprise: "Grande entreprise",
-}
-
-const LEGAL_LABELS: Record<string, string> = {
-  sa: "SA",
-  sarl: "SARL",
-  suarl: "SUARL",
-  gie: "GIE",
-  public: "Entreprise publique",
-  autre: "Autre",
-}
 
 type CompanyDetail = {
   id: string; nif: string; rccm: string | null; name: string; size: string; legal_status: string
@@ -79,17 +68,17 @@ export default async function EntrepriseDetailPage({
   const c = company as unknown as CompanyDetail
   const targetRows = (targets ?? []) as unknown as TargetRow[]
 
-  type InfoRow = { icon: React.ElementType; label: string; value: string }
+  type InfoRow = { icon: React.ElementType; label: string; value: string; warn?: boolean }
   const infoRows = (
     [
       { icon: Hash, label: "NIF", value: formatNIF(c.nif) },
-      c.rccm ? { icon: FileText, label: "RCCM", value: c.rccm } : null,
-      { icon: Building2, label: "Taille", value: SIZE_LABELS[c.size] ?? c.size },
-      { icon: Building2, label: "Statut juridique", value: LEGAL_LABELS[c.legal_status] ?? c.legal_status },
-      c.creation_year ? { icon: Calendar, label: "Année de création", value: String(c.creation_year) } : null,
+      c.rccm
+        ? { icon: FileText, label: "RCCM", value: c.rccm }
+        : { icon: FileText, label: "RCCM", value: "Manquant", warn: true },
       { icon: Mail, label: "Email", value: c.contact_email },
       { icon: Phone, label: "Téléphone", value: c.phone },
       c.address ? { icon: MapPin, label: "Adresse", value: c.address } : null,
+      c.creation_year ? { icon: Calendar, label: "Année de création", value: String(c.creation_year) } : null,
     ] as (InfoRow | null)[]
   ).filter((r): r is InfoRow => r !== null)
 
@@ -105,6 +94,9 @@ export default async function EntrepriseDetailPage({
           <p className="mt-1 text-sm text-muted-foreground">
             {c.sector?.name ?? "Secteur inconnu"} · NIF {formatNIF(c.nif)}
           </p>
+          <div className="mt-2">
+            <CompanyTags size={c.size} legalStatus={c.legal_status} sectorName={c.sector?.name} />
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {canGenerateReports && <CompanyAnnualReportButton companyId={c.id} />}
@@ -119,22 +111,24 @@ export default async function EntrepriseDetailPage({
         </div>
       )}
 
+      {!c.rccm && <MissingFieldAlert message="RCCM manquant — vérifier auprès du greffe" />}
+
       {/* 2-column grid */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Informations générales */}
         <div className="rounded-card border border-border bg-surface p-5 shadow-subtle">
           <h2 className="mb-4 text-sm font-semibold text-foreground">Informations générales</h2>
-          <dl className="space-y-3">
-            {infoRows.map(({ icon: Icon, label, value }) => (
-              <div key={label} className="flex items-start gap-2.5">
-                <Icon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                <div className="min-w-0">
-                  <dt className="text-xs text-muted-foreground">{label}</dt>
-                  <dd className="text-sm font-medium">{value}</dd>
-                </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {infoRows.map(({ icon: Icon, label, value, warn }) => (
+              <div key={label} className="flex items-center gap-2 text-sm min-w-0">
+                <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground shrink-0">{label} : </span>
+                <span className={cn("truncate font-medium", warn && "text-status-warn-text")}>
+                  {value}
+                </span>
               </div>
             ))}
-          </dl>
+          </div>
           {c.validated_at && (
             <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
               Validée le {formatDate(c.validated_at)}

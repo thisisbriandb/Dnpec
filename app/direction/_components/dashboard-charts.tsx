@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart3, Users } from "lucide-react"
+import { PieChart as PieChartIcon, BarChart3, TrendingUp } from "lucide-react"
 import {
   PieChart,
   Pie,
@@ -15,16 +15,17 @@ import {
 } from "recharts"
 
 /* ── Types ──────────────────────────────────────────────────── */
-export type SubmissionSlice = { name: string; value: number; color: string }
-export type SectorBar       = { name: string; count: number; color: string }
+export type DonutSlice  = { name: string; value: number; color: string }
+export type SectorBar   = { name: string; count: number; color: string }
+export type TrendPoint  = { month: string; validated: number; pending: number }
 
 /* ── Custom tooltips ────────────────────────────────────────── */
-function DonutTooltip({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) {
+function DonutTooltip({ active, payload, unit }: { active?: boolean; payload?: { name: string; value: number }[]; unit: string }) {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-lg text-xs">
       <p className="font-semibold text-foreground mb-0.5">{payload[0].name}</p>
-      <p className="text-muted-foreground">{payload[0].value} soumissions</p>
+      <p className="text-muted-foreground">{payload[0].value} {unit}</p>
     </div>
   )
 }
@@ -35,17 +36,31 @@ function BarTooltip({ active, payload }: { active?: boolean; payload?: { payload
   return (
     <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-lg text-xs">
       <p className="font-semibold text-foreground mb-0.5">{d.name}</p>
-      <p className="text-muted-foreground">{d.count} entreprises validées</p>
+      <p className="text-muted-foreground">{d.count} soumissions</p>
     </div>
   )
 }
 
-/* ── Donut chart ────────────────────────────────────────────── */
-export function SubmissionDonutChart({
+function TrendTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; dataKey: string }[]; label?: string }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-lg text-xs space-y-0.5">
+      <p className="font-semibold text-foreground mb-0.5">{label}</p>
+      {payload.map((p) => (
+        <p key={p.dataKey} className="text-muted-foreground">
+          {p.dataKey === "validated" ? "Validées" : "En attente"} : {p.value}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+/* ── Donut chart : taille des entreprises ──────────────────────── */
+export function CompanySizeDonut({
   data,
   total,
 }: {
-  data: SubmissionSlice[]
+  data: DonutSlice[]
   total: number
 }) {
   return (
@@ -53,8 +68,8 @@ export function SubmissionDonutChart({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <BarChart3 className="size-4 text-muted-foreground" />
-          Soumissions par statut
+          <PieChartIcon className="size-4 text-muted-foreground" />
+          Taille des entreprises
         </h2>
         <span className="text-xs text-muted-foreground tabular-nums">{total} total</span>
       </div>
@@ -79,7 +94,7 @@ export function SubmissionDonutChart({
                 <Cell key={i} fill={entry.color} stroke="white" strokeWidth={3} />
               ))}
             </Pie>
-            <ReTooltip content={<DonutTooltip />} />
+            <ReTooltip content={<DonutTooltip unit="entreprises" />} />
           </PieChart>
         </ResponsiveContainer>
 
@@ -89,7 +104,7 @@ export function SubmissionDonutChart({
             {total}
           </span>
           <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-            soumissions
+            entreprises
           </span>
         </div>
       </div>
@@ -97,7 +112,7 @@ export function SubmissionDonutChart({
       {/* Legend */}
       <div className="mt-4 space-y-2">
         {data.map(({ name, value, color }) => {
-          const pct = Math.round((value / total) * 100)
+          const pct = total > 0 ? Math.round((value / total) * 100) : 0
           return (
             <div key={name} className="flex items-center gap-2.5">
               <div className="size-2 rounded-full shrink-0" style={{ background: color }} />
@@ -122,6 +137,49 @@ export function SubmissionDonutChart({
   )
 }
 
+/* ── Tendance des soumissions (6 mois) ─────────────────────────── */
+export function SubmissionTrendChart({ data }: { data: TrendPoint[] }) {
+  return (
+    <section className="rounded-card border border-border bg-card shadow-subtle p-5 flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <TrendingUp className="size-4 text-muted-foreground" />
+          Tendance des soumissions
+        </h2>
+        <span className="text-xs text-muted-foreground">6 derniers mois</span>
+      </div>
+
+      <div style={{ height: 180 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis hide />
+            <ReTooltip content={<TrendTooltip />} cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }} />
+            <Bar dataKey="validated" stackId="s" fill="#16A34A" radius={[0, 0, 0, 0]} isAnimationActive />
+            <Bar dataKey="pending" stackId="s" fill="#F59E0B" radius={[3, 3, 0, 0]} isAnimationActive />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="mt-3 flex items-center gap-4 border-t border-border pt-3">
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <div className="size-2.5 rounded-sm bg-status-ok" />
+          Validées
+        </div>
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <div className="size-2.5 rounded-sm bg-status-warn" />
+          En attente
+        </div>
+      </div>
+    </section>
+  )
+}
+
 /* ── Horizontal bar chart ───────────────────────────────────── */
 export function SectorBarChart({ data }: { data: SectorBar[] }) {
   const total = data.reduce((s, d) => s + d.count, 0)
@@ -132,8 +190,8 @@ export function SectorBarChart({ data }: { data: SectorBar[] }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Users className="size-4 text-muted-foreground" />
-          Entreprises validées par secteur
+          <BarChart3 className="size-4 text-muted-foreground" />
+          Soumissions par secteur
         </h2>
         <span className="text-xs text-muted-foreground tabular-nums">{total} total</span>
       </div>

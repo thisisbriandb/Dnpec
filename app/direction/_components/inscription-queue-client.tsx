@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import { Inbox, CheckCircle, XCircle } from "lucide-react"
-import { DataTable } from "@/components/ui/data-table"
 import { EmptyState } from "@/components/ui/empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
@@ -22,9 +21,8 @@ import {
 import { FormTextarea } from "@/components/ui/form-field"
 import { validateCompany, rejectCompany } from "@/app/actions/companies"
 import { formatNIF, formatDate, formatRelative } from "@/lib/format"
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
-import type { ColumnDef } from "@tanstack/react-table"
+import { CompanyTags } from "@/app/direction/_components/company-tags"
+import { MissingFieldAlert } from "@/app/direction/_components/missing-field-alert"
 
 export type InscriptionCompany = {
   id: string
@@ -33,6 +31,7 @@ export type InscriptionCompany = {
   name: string
   contact_email: string
   phone: string
+  address: string | null
   creation_year: number | null
   size: string
   legal_status: string
@@ -60,7 +59,9 @@ interface InscriptionQueueProps {
 export function InscriptionQueueClient({ pending, onItemRemoved }: InscriptionQueueProps) {
   const [isPending, startTransition] = useTransition()
   const [rejectingId, setRejectingId] = React.useState<string | null>(null)
+  const [validatingId, setValidatingId] = React.useState<string | null>(null)
   const [data, setData] = React.useState<Company[]>(pending)
+  const validatingCompany = data.find((c) => c.id === validatingId) ?? null
 
   const rejectForm = useForm<RejectFormValues>({
     resolver: zodResolver(rejectFormSchema),
@@ -78,6 +79,13 @@ export function InscriptionQueueClient({ pending, onItemRemoved }: InscriptionQu
         onItemRemoved?.()
       }
     })
+  }
+
+  function handleValidateConfirm() {
+    if (!validatingId) return
+    const id = validatingId
+    setValidatingId(null)
+    handleValidate(id)
   }
 
   function handleRejectOpen(id: string) {
@@ -104,103 +112,6 @@ export function InscriptionQueueClient({ pending, onItemRemoved }: InscriptionQu
     })
   }
 
-  const columns: ColumnDef<Company>[] = [
-    {
-      accessorKey: "nif",
-      header: "NIF",
-      cell: ({ row }) => (
-        <span className="text-mono font-mono text-sm">{formatNIF(row.original.nif)}</span>
-      ),
-      size: 120,
-    },
-    {
-      accessorKey: "name",
-      header: "Entreprise",
-      cell: ({ row }) => (
-        <div className="min-w-0">
-          <p className="font-medium truncate">{row.original.name}</p>
-          <p className="text-xs text-muted-foreground">{row.original.contact_email}</p>
-        </div>
-      ),
-    },
-    {
-      id: "sector",
-      header: "Secteur",
-      cell: ({ row }) => row.original.sector?.name ?? "—",
-      size: 120,
-    },
-    {
-      id: "size",
-      header: "Taille",
-      cell: ({ row }) => {
-        const labels: Record<string, string> = {
-          tpe: "TPE",
-          pme: "PME",
-          grande_entreprise: "Grande entreprise",
-        }
-        return labels[row.original.size] ?? row.original.size
-      },
-      size: 120,
-    },
-    {
-      id: "focal",
-      header: "Point focal",
-      cell: ({ row }) => (
-        <div className="min-w-0">
-          <p className="truncate">{row.original.profile?.full_name ?? "—"}</p>
-          <p className="text-xs text-muted-foreground truncate">{row.original.profile?.email ?? ""}</p>
-        </div>
-      ),
-    },
-    {
-      accessorKey: "created_at",
-      header: "Date demande",
-      cell: ({ row }) => (
-        <div>
-          <p>{formatDate(row.original.created_at)}</p>
-          <p className="text-xs text-muted-foreground">{formatRelative(row.original.created_at)}</p>
-        </div>
-      ),
-      size: 140,
-    },
-    {
-      id: "actions",
-      header: "",
-      size: 120,
-      cell: ({ row }) => {
-        const id = row.original.id
-        return (
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => handleValidate(id)}
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "sm" }),
-                "h-7 gap-1.5 text-status-ok-text hover:bg-status-ok-bg hover:text-status-ok-text"
-              )}
-            >
-              <CheckCircle className="size-3.5" />
-              Valider
-            </button>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => handleRejectOpen(id)}
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "sm" }),
-                "h-7 gap-1.5 text-status-bad-text hover:bg-status-bad-bg hover:text-status-bad-text"
-              )}
-            >
-              <XCircle className="size-3.5" />
-              Rejeter
-            </button>
-          </div>
-        )
-      },
-    },
-  ]
-
   if (data.length === 0) {
     return (
       <EmptyState
@@ -221,15 +132,116 @@ export function InscriptionQueueClient({ pending, onItemRemoved }: InscriptionQu
         </span>
       </div>
 
-      <DataTable
-        data={data}
-        columns={columns}
-        emptyState={{
-          icon: Inbox,
-          title: "Aucune inscription en attente",
-          description: "Toutes les demandes ont été traitées.",
-        }}
-      />
+      <div className="space-y-3">
+        {data.map((company) => (
+          <div
+            key={company.id}
+            className="rounded-card border border-border bg-surface p-5 shadow-subtle"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground truncate">{company.name}</h3>
+                <div className="mt-1.5">
+                  <CompanyTags
+                    size={company.size}
+                    legalStatus={company.legal_status}
+                    sectorName={company.sector?.name}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col items-stretch gap-1.5 shrink-0">
+                <Button
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => setValidatingId(company.id)}
+                  className="gap-1.5 bg-status-ok text-white hover:bg-status-ok/90"
+                >
+                  <CheckCircle className="size-3.5" />
+                  Valider
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={isPending}
+                  onClick={() => handleRejectOpen(company.id)}
+                  className="gap-1.5 text-status-bad-text hover:bg-status-bad-bg hover:text-status-bad-text"
+                >
+                  <XCircle className="size-3.5" />
+                  Rejeter…
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <p className="text-sm">
+                <span className="text-muted-foreground">NIF : </span>
+                <span className="font-mono">{formatNIF(company.nif)}</span>
+              </p>
+              <p className="text-sm">
+                <span className="text-muted-foreground">RCCM : </span>
+                {company.rccm ? (
+                  <span className="font-medium">{company.rccm}</span>
+                ) : (
+                  <span className="text-status-warn-text">Manquant</span>
+                )}
+              </p>
+              <p className="text-sm truncate">
+                <span className="text-muted-foreground">Email : </span>
+                <span className="font-medium">{company.contact_email}</span>
+              </p>
+              <p className="text-sm">
+                <span className="text-muted-foreground">Téléphone : </span>
+                <span className="font-medium">{company.phone}</span>
+              </p>
+              <p className="text-sm truncate">
+                <span className="text-muted-foreground">Adresse : </span>
+                <span className="font-medium">{company.address ?? "—"}</span>
+              </p>
+              <p className="text-sm">
+                <span className="text-muted-foreground">Fondée en : </span>
+                <span className="font-medium">{company.creation_year ?? "—"}</span>
+              </p>
+            </div>
+
+            <p className="mt-3 text-xs text-muted-foreground">
+              Soumis le {formatDate(company.created_at)} · {formatRelative(company.created_at)}
+            </p>
+
+            {!company.rccm && (
+              <div className="mt-3">
+                <MissingFieldAlert message="RCCM manquant — vérifier auprès du greffe" />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Validate Confirmation Dialog */}
+      <Dialog open={validatingId !== null} onOpenChange={(open) => { if (!open) setValidatingId(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Valider l&apos;inscription</DialogTitle>
+            <DialogDescription>
+              {validatingCompany
+                ? `Confirmez-vous la validation de l'inscription de « ${validatingCompany.name} » ? L'entreprise sera notifiée et pourra accéder à la plateforme.`
+                : "Confirmez-vous la validation de cette inscription ?"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setValidatingId(null)}>
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={handleValidateConfirm}
+              className="bg-status-ok text-white hover:bg-status-ok/90"
+            >
+              Confirmer la validation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject Dialog */}
       <Dialog open={rejectingId !== null} onOpenChange={(open) => { if (!open) setRejectingId(null) }}>

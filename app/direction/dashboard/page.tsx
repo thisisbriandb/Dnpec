@@ -7,18 +7,25 @@ import {
   ArrowRight,
   AlertTriangle,
   TrendingUp,
-  CalendarClock,
+  Gauge,
+  Timer,
+  PlusCircle,
+  BarChart3,
+  Zap,
 } from "lucide-react"
 import Link from "next/link"
 import { createClient }    from "@/app/lib/supabase/server"
-import { StatCard }        from "@/components/ui/stat-card"
 import { EmptyState }      from "@/components/ui/empty-state"
 import { Badge }           from "@/components/ui/badge"
 import { buttonVariants }  from "@/components/ui/button"
 import { formatDate }      from "@/lib/format"
 import { cn }              from "@/lib/utils"
-import { CampaignSidepanel }                    from "@/app/direction/_components/campaign-sidepanel"
-import { SubmissionDonutChart, SectorBarChart } from "@/app/direction/_components/dashboard-charts"
+import { KpiCard }                from "@/app/direction/_components/kpi-card"
+import {
+  SectorBarChart,
+  CompanySizeDonut,
+  SubmissionTrendChart,
+} from "@/app/direction/_components/dashboard-charts"
 
 export const dynamic = "force-dynamic"
 
@@ -63,13 +70,26 @@ const SUBMISSION_LABELS: Record<string, string> = {
   rejected:             "Rejetées",
   draft:                "Brouillons",
 }
-// Display order for the donut legend
+// Display order for the "Statuts" card
 const SUBMISSION_ORDER = ["validated", "submitted", "correction_requested", "rejected", "draft"]
+
+const SIZE_LABELS: Record<string, string> = {
+  grande_entreprise: "GE",
+  pme:                "PME",
+  tpe:                "TPE",
+}
+const SIZE_COLORS: Record<string, string> = {
+  grande_entreprise: "#16A34A",
+  pme:                "#2563EB",
+  tpe:                "#F59E0B",
+}
+const SIZE_ORDER = ["grande_entreprise", "pme", "tpe"]
 
 /* ── Types ──────────────────────────────────────────────────── */
 type CompanyRow = {
   id: string
   account_status: string
+  size: string
   sector: { name: string } | null
 }
 type CampaignRow = {
@@ -95,6 +115,15 @@ type AuditRow = {
   created_at: string
   actor: { full_name: string } | null
 }
+type SubmissionRow = {
+  id: string
+  status: string
+  submitted_at: string | null
+  validated_at: string | null
+  created_at: string
+  completion_rate: number | null
+  campaign: { sector: { name: string } | null } | null
+}
 
 /* ── Helper ─────────────────────────────────────────────────── */
 function relativeTime(dateStr: string): string {
@@ -119,7 +148,7 @@ export default async function DirectionDashboardPage() {
   ] = await Promise.all([
     supabase
       .from("companies")
-      .select("id, account_status, sector:sectors(name)"),
+      .select("id, account_status, size, sector:sectors(name)"),
 
     supabase
       .from("campaigns")
@@ -135,7 +164,11 @@ export default async function DirectionDashboardPage() {
       .select("id", { count: "exact", head: true })
       .eq("status", "scheduled"),
 
-    supabase.from("submissions").select("id, status"),
+    supabase
+      .from("submissions")
+      .select(
+        "id, status, submitted_at, validated_at, created_at, completion_rate, campaign:campaigns(sector:sectors(name))",
+      ),
 
     supabase
       .from("companies")
@@ -159,34 +192,30 @@ export default async function DirectionDashboardPage() {
   const suspendedCount  = companies.filter((c) => c.account_status === "suspended").length
   const totalCount      = companies.length
 
-  // Sector bar chart data (validated only)
-  const sectorMap = new Map<string, number>()
+  // Répartition par taille (entreprises validées)
+  const sizeMap = new Map<string, number>()
   for (const c of companies.filter((c) => c.account_status === "validated")) {
-    const name = c.sector?.name ?? "—"
-    sectorMap.set(name, (sectorMap.get(name) ?? 0) + 1)
+    sizeMap.set(c.size, (sizeMap.get(c.size) ?? 0) + 1)
   }
-  const sectorBarData = Array.from(sectorMap.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([name, count]) => ({ name, count, color: SECTOR_COLORS[name] ?? "#6b7280" }))
+  const totalValidatedWithSize = Array.from(sizeMap.values()).reduce((a, b) => a + b, 0)
+  const companySizeData = SIZE_ORDER
+    .filter((key) => (sizeMap.get(key) ?? 0) > 0)
+    .map((key) => ({
+      name:  SIZE_LABELS[key] ?? key,
+      value: sizeMap.get(key) ?? 0,
+      color: SIZE_COLORS[key] ?? "#6b7280",
+    }))
 
   /* ── Derived: campaigns ─────────────────────── */
   const activeCampaigns = (activeCampaignsRaw ?? []) as unknown as CampaignRow[]
 
-  let totalTargets     = 0
-  let respondedTargets = 0
+  let totalTargets = 0
   for (const c of activeCampaigns) {
-    totalTargets     += c.targets.length
-    respondedTargets += c.targets.filter(
-      (t) => t.status === "submitted" || t.status === "validated",
-    ).length
+    totalTargets += c.targets.length
   }
-  const responseRate = totalTargets > 0
-    ? Math.round((respondedTargets / totalTargets) * 100)
-    : null
 
   /* ── Derived: submissions ───────────────────── */
-  const submissions = submissionsRaw ?? []
+  const submissions = (submissionsRaw ?? []) as unknown as SubmissionRow[]
   const subCounts: Record<string, number> = {}
   for (const s of submissions) {
     subCounts[s.status] = (subCounts[s.status] ?? 0) + 1
@@ -194,14 +223,59 @@ export default async function DirectionDashboardPage() {
   const totalSubmissions = submissions.length
   const toValidate       = subCounts["submitted"] ?? 0
 
-  // Donut chart data — ordered and filtered
-  const submissionDonutData = SUBMISSION_ORDER
+  // Carte "Statuts" — comptage par statut
+  const statusList = SUBMISSION_ORDER
     .filter((key) => (subCounts[key] ?? 0) > 0)
     .map((key) => ({
-      name:  SUBMISSION_LABELS[key] ?? key,
+      key,
+      label: SUBMISSION_LABELS[key] ?? key,
       value: subCounts[key],
       color: SUBMISSION_COLORS[key] ?? "#9ca3af",
     }))
+
+  // Soumissions par secteur
+  const sectorSubMap = new Map<string, number>()
+  for (const s of submissions) {
+    const name = s.campaign?.sector?.name ?? "—"
+    sectorSubMap.set(name, (sectorSubMap.get(name) ?? 0) + 1)
+  }
+  const sectorBarData = Array.from(sectorSubMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([name, count]) => ({ name, count, color: SECTOR_COLORS[name] ?? "#6b7280" }))
+
+  // Tendance des soumissions (6 derniers mois)
+  const now = new Date()
+  const monthBuckets = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+    const label = d.toLocaleDateString("fr-FR", { month: "short" }).replace(".", "")
+    return { key: `${d.getFullYear()}-${d.getMonth()}`, label: label.charAt(0).toUpperCase() + label.slice(1) }
+  })
+  const trendMap = new Map(monthBuckets.map((m) => [m.key, { validated: 0, pending: 0 }]))
+  for (const s of submissions) {
+    if (s.status === "draft") continue
+    const d = new Date(s.submitted_at ?? s.created_at)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    const bucket = trendMap.get(key)
+    if (!bucket) continue
+    if (s.status === "validated") bucket.validated += 1
+    else bucket.pending += 1
+  }
+  const trendData = monthBuckets.map((m) => ({ month: m.label, ...trendMap.get(m.key)! }))
+
+  // Complétude globale (moyenne du taux de complétion des formulaires)
+  const avgCompletion = totalSubmissions > 0
+    ? Math.round(submissions.reduce((sum, s) => sum + (s.completion_rate ?? 0), 0) / totalSubmissions)
+    : null
+
+  // Délai moyen de traitement (soumission → validation)
+  const processedSubmissions = submissions.filter((s) => s.submitted_at && s.validated_at)
+  const avgProcessingDays = processedSubmissions.length > 0
+    ? processedSubmissions.reduce(
+        (sum, s) => sum + (new Date(s.validated_at!).getTime() - new Date(s.submitted_at!).getTime()),
+        0,
+      ) / processedSubmissions.length / 86_400_000
+    : null
 
   /* ── Derived: others ────────────────────────── */
   const pendingQueue = (pendingQueueRaw ?? []) as unknown as PendingRow[]
@@ -244,31 +318,48 @@ export default async function DirectionDashboardPage() {
       </div>
 
       {/* ── KPI Row ───────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 2xl:grid-cols-6">
+        <KpiCard
           label="Entreprises validées"
           value={validatedCount}
           icon={<Building2 className="size-4" />}
-          sparklineColor="ok"
-          deltaLabel={totalCount > 0 ? `sur ${totalCount} inscrites` : undefined}
+          accent="ok"
+          href="/direction/entreprises"
+          changeLabel={totalCount > 0 ? `sur ${totalCount} inscrites` : undefined}
         />
-        <StatCard
+        <KpiCard
           label="Inscriptions en attente"
           value={pendingCount}
           icon={<Clock className="size-4" />}
-          sparklineColor={pendingCount > 0 ? "warn" : "ok"}
-          deltaLabel={
-            rejectedCount + suspendedCount > 0
-              ? `${rejectedCount + suspendedCount} inactive${rejectedCount + suspendedCount > 1 ? "s" : ""}`
+          accent="warn"
+          href="/direction/entreprises/inscriptions"
+          changeLabel={
+            pendingCount > 0
+              ? "À traiter dès maintenant"
+              : rejectedCount + suspendedCount > 0
+                ? `${rejectedCount + suspendedCount} inactive${rejectedCount + suspendedCount > 1 ? "s" : ""}`
+                : undefined
+          }
+        />
+        <KpiCard
+          label="Soumissions à valider"
+          value={toValidate}
+          icon={<CheckSquare className="size-4" />}
+          accent="info"
+          href="/direction/validations"
+          changeLabel={
+            totalSubmissions > 0
+              ? `sur ${totalSubmissions} soumission${totalSubmissions > 1 ? "s" : ""}`
               : undefined
           }
         />
-        <StatCard
+        <KpiCard
           label="Campagnes actives"
           value={activeCampaigns.length}
           icon={<Megaphone className="size-4" />}
-          sparklineColor="ok"
-          deltaLabel={
+          accent="gray"
+          href="/direction/campagnes"
+          changeLabel={
             (scheduledCount ?? 0) > 0
               ? `+ ${scheduledCount} planifiée${(scheduledCount ?? 0) > 1 ? "s" : ""}`
               : totalTargets > 0
@@ -276,201 +367,145 @@ export default async function DirectionDashboardPage() {
                 : undefined
           }
         />
-        <StatCard
-          label="Taux de réponse"
-          value={responseRate != null ? `${responseRate} %` : "—"}
-          icon={<TrendingUp className="size-4" />}
-          sparklineColor={
-            responseRate == null ? "info"
-            : responseRate >= 80 ? "ok"
-            : responseRate >= 50 ? "warn"
-            : "bad"
-          }
-          deltaLabel={
-            responseRate != null
-              ? `${respondedTargets} / ${totalTargets} soumis`
-              : "Aucune campagne active"
+        <KpiCard
+          label="Complétude globale"
+          value={avgCompletion != null ? `${avgCompletion} %` : "—"}
+          icon={<Gauge className="size-4" />}
+          accent="purple"
+          progressPct={avgCompletion ?? 0}
+          changeLabel={
+            totalSubmissions > 0
+              ? `Moyenne sur ${totalSubmissions} soumission${totalSubmissions > 1 ? "s" : ""}`
+              : "Aucune soumission"
           }
         />
-        <StatCard
-          label="Soumissions à valider"
-          value={toValidate}
-          icon={<CheckSquare className="size-4" />}
-          sparklineColor={toValidate > 0 ? "info" : "ok"}
-          deltaLabel={
-            totalSubmissions > 0
-              ? `sur ${totalSubmissions} soumission${totalSubmissions > 1 ? "s" : ""}`
-              : undefined
+        <KpiCard
+          label="Délai moy. traitement"
+          value={avgProcessingDays != null ? `${avgProcessingDays.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} j` : "—"}
+          icon={<Timer className="size-4" />}
+          accent="info"
+          changeLabel={
+            processedSubmissions.length > 0
+              ? `Sur ${processedSubmissions.length} soumission${processedSubmissions.length > 1 ? "s" : ""} validée${processedSubmissions.length > 1 ? "s" : ""}`
+              : "Aucune soumission validée"
           }
         />
       </div>
 
-      {/* ── Campagnes — sidepanel interactif ──────── */}
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Megaphone className="size-4 text-muted-foreground" />
-            Campagnes actives
-            {activeCampaigns.length > 0 && (
-              <Badge variant="secondary">{activeCampaigns.length}</Badge>
-            )}
-          </h2>
-          <Link
-            href="/direction/campagnes"
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-          >
-            Toutes les campagnes
-            <ArrowRight className="size-3" />
-          </Link>
-        </div>
-
-        {activeCampaigns.length === 0 ? (
-          <EmptyState
-            icon={Megaphone}
-            title="Aucune campagne active"
-            description="Lancez une campagne de collecte pour voir sa progression ici."
-            size="sm"
-          />
+      {/* ── Ligne 2 : Soumissions par secteur + Statuts + Actions rapides ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_260px_240px]">
+        {sectorBarData.length > 0 ? (
+          <SectorBarChart data={sectorBarData} />
         ) : (
-          <CampaignSidepanel campaigns={activeCampaigns} />
-        )}
-      </section>
-
-      {/* ── Graphiques : donut + barre horizontale ─── */}
-      {(totalSubmissions > 0 || sectorBarData.length > 0) && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {totalSubmissions > 0 ? (
-            <SubmissionDonutChart
-              data={submissionDonutData}
-              total={totalSubmissions}
-            />
-          ) : (
-            <div className="rounded-card border border-border bg-card shadow-subtle p-5 flex items-center justify-center min-h-48">
-              <p className="text-sm text-muted-foreground">Aucune soumission enregistrée</p>
-            </div>
-          )}
-
-          {sectorBarData.length > 0 ? (
-            <SectorBarChart data={sectorBarData} />
-          ) : (
-            <div className="rounded-card border border-border bg-card shadow-subtle p-5 flex items-center justify-center min-h-48">
-              <p className="text-sm text-muted-foreground">Aucune entreprise validée</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Bas de page : inscriptions + activité ──── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
-
-        {/* Inscriptions en attente */}
-        <section>
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Clock className="size-4 text-muted-foreground" />
-              Inscriptions en attente
-              {pendingCount > 0 && (
-                <Badge variant="secondary">{pendingCount}</Badge>
-              )}
-            </h2>
-            {pendingCount > 0 && (
-              <Link
-                href="/direction/entreprises/inscriptions"
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-              >
-                Tout traiter
-                <ArrowRight className="size-3" />
-              </Link>
-            )}
+          <div className="h-full rounded-card border border-border bg-card shadow-subtle p-5 flex items-center justify-center min-h-48">
+            <p className="text-sm text-muted-foreground">Aucune soumission enregistrée</p>
           </div>
+        )}
 
-          {pendingQueue.length === 0 ? (
-            <EmptyState
-              icon={Clock}
-              title="File vide"
-              description="Aucune inscription en attente de validation."
-              size="sm"
-            />
+        {/* Statuts */}
+        <div className="h-full rounded-card border border-border bg-card shadow-subtle p-5 flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <BarChart3 className="size-4 text-muted-foreground" />
+            Statuts
+          </h2>
+          {statusList.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Aucune soumission</p>
           ) : (
-            <div className="rounded-card border border-border bg-card shadow-subtle overflow-hidden divide-y divide-border">
-              {pendingQueue.map((company) => (
+            <div className="flex flex-col gap-2">
+              {statusList.map(({ key, label, value, color }) => (
                 <div
-                  key={company.id}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors"
+                  key={key}
+                  className="flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5"
+                  style={{ background: color + "18" }}
                 >
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-status-warn-bg">
-                    <Building2 className="size-3.5 text-status-warn-text" />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="size-2 rounded-full shrink-0" style={{ background: color }} />
+                    <span className="text-xs font-medium truncate" style={{ color }}>{label}</span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate">{company.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {company.sector?.name ?? "—"} · {company.contact_email}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <time className="text-xs text-muted-foreground hidden md:block">
-                      {relativeTime(company.created_at)}
-                    </time>
-                    <Link
-                      href={`/direction/entreprises/${company.id}`}
-                      className={cn(
-                        buttonVariants({ variant: "outline", size: "sm" }),
-                        "gap-1 text-xs h-7 px-2",
-                      )}
-                    >
-                      Examiner
-                      <ArrowRight className="size-3" />
-                    </Link>
-                  </div>
+                  <span className="text-sm font-bold tabular-nums shrink-0" style={{ color }}>{value}</span>
                 </div>
               ))}
             </div>
           )}
-        </section>
+        </div>
+
+        {/* Actions rapides */}
+        <div className="h-full rounded-card border border-border bg-card shadow-subtle p-5 flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Zap className="size-4 text-muted-foreground" />
+            Actions rapides
+          </h2>
+          <div className="flex flex-col gap-2">
+            <Link
+              href="/direction/entreprises/nouveau"
+              className={cn(buttonVariants({ variant: "default", size: "sm" }), "justify-start gap-2.5 w-full")}
+            >
+              <PlusCircle className="size-3.5" />
+              Nouvelle inscription
+            </Link>
+            <Link
+              href="/direction/campagnes/nouvelle"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "justify-start gap-2.5 w-full")}
+            >
+              <Megaphone className="size-3.5" />
+              Nouvelle campagne
+            </Link>
+            <Link
+              href="/direction/validations"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "justify-start gap-2.5 w-full text-status-info border-status-info/30")}
+            >
+              <CheckSquare className="size-3.5" />
+              Valider soumissions
+            </Link>
+            <Link
+              href="/direction/analyses"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "justify-start gap-2.5 w-full")}
+            >
+              <TrendingUp className="size-3.5" />
+              Voir les analyses
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Ligne 2b : Tendance + Taille des entreprises + Activité récente ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_220px_280px]">
+        <SubmissionTrendChart data={trendData} />
+
+        {companySizeData.length > 0 ? (
+          <CompanySizeDonut data={companySizeData} total={totalValidatedWithSize} />
+        ) : (
+          <div className="h-full rounded-card border border-border bg-card shadow-subtle p-5 flex items-center justify-center min-h-48">
+            <p className="text-sm text-muted-foreground">Aucune entreprise validée</p>
+          </div>
+        )}
 
         {/* Activité récente */}
-        <section>
-          <div className="mb-3 flex items-center justify-between gap-2">
+        <section className="h-[400px] rounded-card border border-border bg-card shadow-subtle overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-border shrink-0">
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Activity className="size-4 text-muted-foreground" />
               Activité récente
             </h2>
-            <Link
-              href="/direction/audit"
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-            >
-              Journal complet
-              <ArrowRight className="size-3" />
-            </Link>
           </div>
-
           {recentLogs.length === 0 ? (
-            <EmptyState
-              icon={Activity}
-              title="Aucune activité"
-              description="Les actions des utilisateurs apparaîtront ici."
-              size="sm"
-            />
+            <div className="p-4">
+              <EmptyState
+                icon={Activity}
+                title="Aucune activité"
+                description="Les actions des utilisateurs apparaîtront ici."
+                size="sm"
+              />
+            </div>
           ) : (
-            <div className="rounded-card border border-border bg-card shadow-subtle overflow-hidden divide-y divide-border">
+            <div className="flex-1 overflow-y-auto divide-y divide-border">
               {recentLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors"
-                >
-                  <div className="relative shrink-0">
-                    <div className="flex size-7 items-center justify-center rounded-full bg-muted">
-                      <CalendarClock className="size-3.5 text-muted-foreground" />
-                    </div>
-                    <span
-                      className={cn(
-                        "absolute -bottom-0.5 -right-0.5 size-2 rounded-full ring-1 ring-card",
-                        ACTION_DOT[log.action] ?? "bg-muted-foreground",
-                      )}
-                    />
-                  </div>
+                <div key={log.id} className="flex items-start gap-2.5 px-4 py-2.5">
+                  <span
+                    className={cn("mt-1.5 size-1.5 rounded-full shrink-0", ACTION_DOT[log.action] ?? "bg-muted-foreground")}
+                  />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-snug">
+                    <p className="text-xs leading-snug">
                       <span className="font-medium text-foreground">
                         {log.actor?.full_name ?? "Système"}
                       </span>
@@ -479,17 +514,81 @@ export default async function DirectionDashboardPage() {
                         {TABLE_LABELS[log.entity_table] ?? log.entity_table}
                       </span>
                     </p>
+                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                      {relativeTime(log.created_at)}
+                    </p>
                   </div>
-                  <time className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                    {relativeTime(log.created_at)}
-                  </time>
                 </div>
               ))}
             </div>
           )}
         </section>
-
       </div>
+
+      {/* ── Inscriptions en attente ─────────────────── */}
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Clock className="size-4 text-muted-foreground" />
+            Inscriptions en attente
+            {pendingCount > 0 && (
+              <Badge variant="secondary">{pendingCount}</Badge>
+            )}
+          </h2>
+          {pendingCount > 0 && (
+            <Link
+              href="/direction/entreprises/inscriptions"
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            >
+              Tout traiter
+              <ArrowRight className="size-3" />
+            </Link>
+          )}
+        </div>
+
+        {pendingQueue.length === 0 ? (
+          <EmptyState
+            icon={Clock}
+            title="File vide"
+            description="Aucune inscription en attente de validation."
+            size="sm"
+          />
+        ) : (
+          <div className="rounded-card border border-border bg-card shadow-subtle overflow-hidden divide-y divide-border">
+            {pendingQueue.map((company) => (
+              <div
+                key={company.id}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-status-warn-bg">
+                  <Building2 className="size-3.5 text-status-warn-text" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">{company.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {company.sector?.name ?? "—"} · {company.contact_email}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <time className="text-xs text-muted-foreground hidden md:block">
+                    {relativeTime(company.created_at)}
+                  </time>
+                  <Link
+                    href={`/direction/entreprises/${company.id}`}
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                      "gap-1 text-xs h-7 px-2",
+                    )}
+                  >
+                    Examiner
+                    <ArrowRight className="size-3" />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   )
 }
