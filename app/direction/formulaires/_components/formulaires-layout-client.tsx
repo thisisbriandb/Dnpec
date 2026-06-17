@@ -255,13 +255,17 @@ function SectorChip({
       type="button"
       onClick={onSelect}
       className={cn(
-        "shrink-0 w-52 flex flex-col gap-1.5 rounded-xl px-3.5 py-2.5 text-left transition-all duration-150",
+        "relative shrink-0 w-52 flex flex-col gap-1.5 rounded-xl px-3.5 py-2.5 text-left transition-all duration-150",
         "focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-1",
         isSelected
-          ? "bg-accent border border-primary/20 shadow-subtle"
-          : "border border-border hover:bg-muted/60 hover:border-primary/20"
+          ? "bg-accent border-2 border-primary shadow-medium"
+          : "border border-border hover:bg-muted/60 hover:border-primary/30"
       )}
     >
+      {isSelected && (
+        <span className="absolute inset-x-3 -top-px h-[3px] rounded-full bg-primary" />
+      )}
+
       {/* Top row: code + status */}
       <div className="flex items-center gap-2">
         <span className={cn("block size-2 rounded-full shrink-0", statusDot)} />
